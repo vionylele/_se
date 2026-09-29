@@ -1,0 +1,13 @@
+  {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Jalankan pycurl_lite",
+        "type": "debugpy",
+        "request": "launch",
+        "program": "${workspaceFolder}/pycurl_lite.py",
+        "args": ["https://example.com"],
+        "console": "integratedTerminal"
+      }
+    ]
+  }
