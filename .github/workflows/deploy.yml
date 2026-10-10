@@ -69,6 +69,12 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./nqu-portal/dist
+
+      - name: Show repo files
+        run: |
+          pwd
+          ls -la
+          find . -maxdepth 2 -name package.json -not -path "./node_modules/*"
   deploy:
     needs: build
     runs-on: ubuntu-latest
