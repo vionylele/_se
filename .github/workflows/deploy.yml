@@ -48,7 +48,27 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./dist
+          
+      - name: Install dependencies
+        working-directory: nqu-portal
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
 
+      - name: Type-check and build
+        working-directory: nqu-portal
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Upload build artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./nqu-portal/dist
   deploy:
     needs: build
     runs-on: ubuntu-latest
