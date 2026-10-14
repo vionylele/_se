@@ -505,7 +505,10 @@ export const useAppStore = create<AppState>()((set, get) => {
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password,
-        options: { data: { full_name: cleanName } },
+        options: {
+          data: { full_name: cleanName },
+          emailRedirectTo: window.location.href.split('#')[0],
+            },
       });
       if (error) {
         if (/already|registered/i.test(error.message)) return fail('EMAIL_TAKEN', 'An account with this email already exists.');
