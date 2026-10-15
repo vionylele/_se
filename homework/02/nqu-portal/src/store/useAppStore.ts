@@ -507,7 +507,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         password,
         options: {
           data: { full_name: cleanName },
-          emailRedirectTo: window.location.href.split('#')[0],
+            emailRedirectTo: window.location.origin + window.location.pathname,
             },
       });
       if (error) {
