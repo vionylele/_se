@@ -24,14 +24,42 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Homework 02 is a Vite/React project, so it must be built before it can be hosted.
+      - name: Build NQU portal (homework 02)
+        working-directory: homework/02/nqu-portal
+        run: |
+          npm ci || npm install
+          npm run build
+        env:
+          # Optional: set these under Settings > Secrets and variables > Actions > Variables.
+          # When empty, the portal falls back to the public values in src/lib/supabaseClient.ts.
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+
+      # The repository root (index.html and the other homework) is published as before;
+      # the built portal replaces the homework/02 sources at /homework/02/.
+      - name: Assemble site
+        run: |
+          mkdir -p _site/homework/02
+          rsync -a \
+            --exclude='/.git' --exclude='/.github' --exclude='/_site' --exclude='.DS_Store' \
+            --exclude='node_modules' --exclude='.venv' --exclude='__pycache__' \
+            --exclude='/homework/02/nqu-portal' \
+            ./ _site/
+          cp -r homework/02/nqu-portal/dist/. _site/homework/02/
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Mengunggah seluruh root repository (tempat index.html berada)
-          path: '.'
+          path: '_site'
 
       - name: Deploy to GitHub Pages
         id: deployment

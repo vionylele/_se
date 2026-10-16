@@ -197,7 +197,7 @@ export default function CoursesTab() {
               onChange={(e) => update('credits', e.target.value)} />
           </FormField>
           <FormField id="c-schedule" label="Day & Periods" error={errors.schedule}
-            hint={parsed?.ok ? `Parsed: ${formatSlots(parsed.slots)}` : 'Examples: "Tue 3-4", "Mon 2-4, Wed 1", "Wed Z" (noon break).'}>
+            hint={parsed?.ok ? `Parsed: ${formatSlots(parsed.slots)}` : 'Examples: "Tue 3-4", "Mon 2-4, Wed 5". Periods 1-9; 12:00 - 13:30 is the lunch break and cannot be used.'}>
             <input id="c-schedule" className={fieldClass(errors.schedule)} placeholder="e.g., Tue 3-4" value={form.schedule}
               onChange={(e) => update('schedule', e.target.value)} />
           </FormField>

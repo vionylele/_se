@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import {
   ADMIN_EMAIL,
   COURSE_DEPARTMENTS,
+  LUNCH_BREAK_MESSAGE,
   MAX_CREDITS_PER_SEMESTER,
   PERIOD_CODES,
   WEEKDAYS,
@@ -359,6 +360,7 @@ function validateCourse(input: NewCourseInput): string | null {
   if (!Number.isInteger(input.credits) || input.credits < 1 || input.credits > 6) return 'Credits must be a whole number from 1 to 6.';
   if (!Number.isInteger(input.capacity) || input.capacity < 1) return 'Capacity must be at least 1.';
   if (input.slots.length === 0) return 'At least one timetable slot is required.';
+  if (input.slots.some((s) => s.period === 'Z')) return LUNCH_BREAK_MESSAGE;
   const seen = new Set<string>();
   for (const s of input.slots) {
     if (!WEEKDAYS.includes(s.day) || !PERIOD_CODES.includes(s.period)) return 'One or more timetable slots are invalid.';

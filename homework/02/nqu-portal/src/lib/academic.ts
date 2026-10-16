@@ -40,7 +40,7 @@ export const PERIODS: PeriodDefinition[] = [
   { code: '2', label: 'Period 2', start: '09:10', end: '10:00', isNoonBreak: false },
   { code: '3', label: 'Period 3', start: '10:10', end: '11:00', isNoonBreak: false },
   { code: '4', label: 'Period 4', start: '11:10', end: '12:00', isNoonBreak: false },
-  { code: 'Z', label: 'Period Z (Noon Break)', start: '12:10', end: '13:00', isNoonBreak: true },
+  { code: 'Z', label: 'Lunch Break', start: '12:00', end: '13:30', isNoonBreak: true },
   { code: '5', label: 'Period 5', start: '13:30', end: '14:20', isNoonBreak: false },
   { code: '6', label: 'Period 6', start: '14:30', end: '15:20', isNoonBreak: false },
   { code: '7', label: 'Period 7', start: '15:30', end: '16:20', isNoonBreak: false },
@@ -48,7 +48,10 @@ export const PERIODS: PeriodDefinition[] = [
   { code: '9', label: 'Period 9', start: '17:30', end: '18:20', isNoonBreak: false },
 ];
 
-export const PERIOD_CODES: PeriodCode[] = PERIODS.map((p) => p.code);
+/** Periods a class can actually be scheduled in. The lunch break row (12:00 - 13:30) is display-only. */
+export const PERIOD_CODES: PeriodCode[] = PERIODS.filter((p) => !p.isNoonBreak).map((p) => p.code);
+
+export const LUNCH_BREAK_MESSAGE = 'The lunch break (12:00 - 13:30) is reserved: no class can be scheduled then.';
 
 /** Converts a 0-100 score (rounded to the nearest integer) to its grade-scale entry. */
 export function scoreToGrade(score: number): GradeScaleEntry {

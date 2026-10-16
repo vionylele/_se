@@ -78,3 +78,24 @@ $$;
 
 -- Check: every row should now show a student department or 'All Departments'.
 -- select department, type, count(*) from public.courses group by 1, 2 order by 1, 2;
+
+-- 3) Lunch break (12:00 - 13:30): move the one seed course that sat in the noon period
+--    (Career Planning Seminar, Wed Z -> Wed Period 5) and forbid noon slots from now on.
+update public.courses
+   set slots = '[{"day":"Wed","period":"5"}]'::jsonb
+ where course_code = 'CDS1001' and slots @> '[{"period":"Z"}]'::jsonb;
+
+
+-- Lunch break (12:00 - 13:30): no class may use the noon period "Z".
+-- NOT VALID = enforced for new/updated rows without failing on any old row.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'courses_no_lunch_slot') then
+    alter table public.courses
+      add constraint courses_no_lunch_slot
+      check (not (slots @> '[{"period":"Z"}]'::jsonb)) not valid;
+  end if;
+end $$;
+
+-- Any other course still using Z? Edit it in the admin panel (the constraint blocks saving it until fixed).
+-- select course_code, title from public.courses where slots @> '[{"period":"Z"}]'::jsonb;

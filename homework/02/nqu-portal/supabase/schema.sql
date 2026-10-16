@@ -79,6 +79,17 @@ create table if not exists public.courses (
   unique (semester, course_code)
 );
 
+-- Lunch break (12:00 - 13:30): no class may use the noon period "Z".
+-- NOT VALID = enforced for new/updated rows without failing on any old row.
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'courses_no_lunch_slot') then
+    alter table public.courses
+      add constraint courses_no_lunch_slot
+      check (not (slots @> '[{"period":"Z"}]'::jsonb)) not valid;
+  end if;
+end $$;
+
 create table if not exists public.announcements (
   id          uuid primary key default gen_random_uuid(),
   title       text not null check (char_length(title) >= 3),
@@ -365,7 +376,7 @@ select * from (values
  ('GE1001','Taiwan Society and Culture','An interdisciplinary introduction to the history, society, and cultural landscape of Taiwan and Kinmen.','Prof. Ming-Chieh Hsu','Center for General Education','All Departments','General Education',2,'General Education Hall G201',90,'2026 Fall','[{"day":"Tue","period":"8"},{"day":"Tue","period":"9"}]'::jsonb),
  ('GE1105','Introduction to Philosophy','Key questions in ethics, knowledge, and reasoning, with an emphasis on critical thinking.','Prof. Anna Kuo','Center for General Education','All Departments','General Education',2,'General Education Hall G202',90,'2026 Fall','[{"day":"Wed","period":"8"},{"day":"Wed","period":"9"}]'::jsonb),
  ('PE1101','Physical Education I','Fitness fundamentals and a choice of team or individual sports modules.','Coach Brian Tsai','Center for General Education','All Departments','Physical Education',1,'Main Gymnasium',40,'2026 Fall','[{"day":"Fri","period":"8"}]'::jsonb),
- ('CDS1001','Career Planning Seminar','Noon-hour seminar series on career exploration, resume writing, and interview skills.','Dr. Jenny Hsieh','Office of Student Affairs','All Departments','Elective',1,'Student Center Auditorium',100,'2026 Fall','[{"day":"Wed","period":"Z"}]'::jsonb)
+ ('CDS1001','Career Planning Seminar','Noon-hour seminar series on career exploration, resume writing, and interview skills.','Dr. Jenny Hsieh','Office of Student Affairs','All Departments','Elective',1,'Student Center Auditorium',100,'2026 Fall','[{"day":"Wed","period":"5"}]'::jsonb)
 ) as v(course_code, title, description, instructor, college, department, type, credits, classroom, capacity, semester, slots)
 where not exists (select 1 from public.courses);
 
