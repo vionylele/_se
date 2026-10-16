@@ -13,51 +13,98 @@
     display: ['Fraunces', 'serif'], sans: ['"Instrument Sans"', 'system-ui', 'sans-serif'] } } } };
 </script>
 <style>
-  :root{--bg:#f3f6fa;--ink:#14233a;--muted:#55657d;--line:#d5dee9;--card:#fff;--accent:#0b6e6e}
-  @media (prefers-color-scheme:dark){
-    :root{--bg:#0e1724;--ink:#e6edf6;--muted:#93a4bb;--line:#26364d;--card:#152234;--accent:#4fc3c3}
+  :root {
+    --bg: #0b111c;
+    --ink: #e6edf6;
+    --muted: #8b9bb2;
+    --line: #1e2c40;
+    --card: #131d2e;
+    --card-hover: #19273c;
+    --accent: #38bdf8;
+    --accent-glow: rgba(56, 189, 248, 0.15);
   }
-  body{background:var(--bg);color:var(--ink)}
-  .muted{color:var(--muted)} .card{background:var(--card);border:1px solid var(--line)}
-  .btn{border:1px solid var(--line);padding:.4rem .8rem;border-radius:.5rem;font-weight:500;font-size:.875rem}
-  .btn:hover{border-color:var(--accent)} .btn-main{background:var(--accent);border-color:var(--accent);color:var(--bg)}
-  a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  body {
+    background-color: var(--bg);
+    color: var(--ink);
+  }
+  .muted { color: var(--muted); }
+  .card { 
+    background-color: var(--card); 
+    border: 1px solid var(--line);
+    transition: all 0.2s ease-in-out;
+  }
+  .card:hover {
+    background-color: var(--card-hover);
+    border-color: rgba(56, 189, 248, 0.4);
+  }
+  .btn {
+    border: 1px solid var(--line);
+    padding: 0.45rem 0.85rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: var(--ink);
+    background-color: rgba(255, 255, 255, 0.03);
+    transition: all 0.15s ease-in-out;
+    text-align: center;
+  }
+  .btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background-color: var(--accent-glow);
+  }
+  .btn-main {
+    background-color: var(--accent);
+    border-color: var(--accent);
+    color: #0b111c;
+    font-weight: 600;
+  }
+  .btn-main:hover {
+    background-color: #7dd3fc;
+    border-color: #7dd3fc;
+    color: #0b111c;
+    box-shadow: 0 0 14px var(--accent-glow);
+  }
+  input::placeholder {
+    color: #55667e;
+  }
+  a:focus-visible, button:focus-visible, input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
 </style>
 </head>
-<body class="font-sans antialiased">
+<body class="font-sans antialiased min-h-screen">
 
 <header class="max-w-5xl mx-auto px-5 pt-12 pb-8">
-  <h1 class="font-display text-4xl sm:text-5xl leading-tight">Software Engineering<br>Computer Science Lab Portfolio</h1>
-  <p class="muted mt-4 max-w-xl">Every programming assignment for this course, in one place. Open a live demo, read the source, or check the write-up.</p>
+  <h1 class="font-display text-4xl sm:text-5xl leading-tight text-white tracking-tight">Software Engineering<br><span class="text-sky-400">Computer Science Lab Portfolio</span></h1>
+  <p class="muted mt-4 max-w-xl text-base">Every programming assignment for this course, in one place. Open a live demo, read the source, or check the write-up.</p>
   <div class="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm">
-    <span><span class="muted">Student: </span>李俽嫺/span>
-    <span><span class="muted">ID: </span>111410537</span>
-    <a class="underline" style="color:var(--accent)" href="https://github.com/vionylele">GitHub profile</a>
-    <a class="underline" style="color:var(--accent)" href="https://github.com/vionylele/_se">Repository</a>
+    <span><span class="muted">Student: </span><span class="text-slate-200">李俽嫺</span></span>
+    <span><span class="muted">ID: </span><span class="text-slate-200">111410537</span></span>
+    <a class="underline transition-colors hover:text-sky-300" style="color:var(--accent)" href="https://github.com/vionylele" target="_blank" rel="noopener">GitHub profile</a>
+    <a class="underline transition-colors hover:text-sky-300" style="color:var(--accent)" href="https://github.com/vionylele/_se" target="_blank" rel="noopener">Repository</a>
   </div>
 </header>
 
 <main class="max-w-5xl mx-auto px-5 pb-16">
-  <div class="flex flex-col sm:flex-row gap-3 mb-3">
+  <div class="flex flex-col sm:flex-row gap-3 mb-4">
     <label class="sr-only" for="q">Search assignments</label>
-    <input id="q" type="search" placeholder="Search by title, tag or keyword"
-      class="card flex-1 rounded-lg px-4 py-2.5 text-sm">
+    <input id="q" type="search" placeholder="Search by title, tag, or keyword..."
+      class="card flex-1 rounded-lg px-4 py-3 text-sm focus:border-sky-400 focus:outline-none">
   </div>
-  <div id="tags" class="flex flex-wrap gap-2 mb-6" role="group" aria-label="Filter by tag"></div>
   <p id="count" class="muted text-sm mb-4" aria-live="polite"></p>
   <div id="grid" class="grid gap-5 sm:grid-cols-2"></div>
-  <p id="empty" class="muted hidden py-10 text-center">No assignments match. Clear the search or pick another tag.</p>
+  <p id="empty" class="muted hidden py-12 text-center text-sm">No assignments match. Clear the search.</p>
 </main>
 
-<footer class="max-w-5xl mx-auto px-5 pb-10 text-sm muted">
+<footer class="max-w-5xl mx-auto px-5 pb-10 text-sm muted border-t border-[#1e2c40] pt-6">
   Built with plain HTML and Tailwind. Hosted on GitHub Pages.
 </footer>
 
 <script>
   const REPO = 'https://github.com/vionylele/_se';
 
-  // To add a homework: copy one object, change the fields, push to main.
-  // demo/docs are relative paths, so they work at https://<user>.github.io/_se/
   const ASSIGNMENTS = [
     { id: '01', title: 'PycURL Lite (CLI demo)', status: 'Completed',
       tags: ['Python', 'CLI', 'HTTP'],
@@ -72,38 +119,33 @@
   ];
 
   const $ = (s) => document.querySelector(s);
-  const state = { q: '', tag: 'All' };
+  let searchQuery = '';
   const esc = (s) => s.replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-  const allTags = ['All', ...new Set(ASSIGNMENTS.flatMap((a) => a.tags))];
-  $('#tags').innerHTML = allTags.map((t) =>
-    `<button type="button" data-tag="${esc(t)}" class="btn" aria-pressed="${t === 'All'}">${esc(t)}</button>`).join('');
-
   function render() {
-    const q = state.q.trim().toLowerCase();
+    const q = searchQuery.trim().toLowerCase();
     const list = ASSIGNMENTS.filter((a) =>
-      (state.tag === 'All' || a.tags.includes(state.tag)) &&
-      (!q || [a.id, a.title, a.desc, a.status, ...a.tags].join(' ').toLowerCase().includes(q)));
+      !q || [a.id, a.title, a.desc, a.status, ...a.tags].join(' ').toLowerCase().includes(q)
+    );
 
-    document.querySelectorAll('#tags button').forEach((b) => {
-      const on = b.dataset.tag === state.tag;
-      b.setAttribute('aria-pressed', on);
-      b.classList.toggle('btn-main', on);
-    });
     $('#count').textContent = `${list.length} of ${ASSIGNMENTS.length} assignments`;
     $('#empty').classList.toggle('hidden', list.length > 0);
     $('#grid').innerHTML = list.map((a) => `
-      <article class="card rounded-xl p-5 flex flex-col">
-        <div class="flex items-start justify-between gap-3">
-          <h2 class="font-display text-xl">Homework ${esc(a.id)}: ${esc(a.title)}</h2>
-          <span class="text-xs font-semibold rounded-full px-2.5 py-1 shrink-0"
-            style="${a.status === 'Completed'
-              ? 'background:var(--accent);color:var(--bg)'
-              : 'border:1px dashed var(--muted);color:var(--muted)'}">${esc(a.status)}</span>
+      <article class="card rounded-xl p-5 flex flex-col justify-between">
+        <div>
+          <div class="flex items-start justify-between gap-3">
+            <h2 class="font-display text-xl font-medium text-white">Homework ${esc(a.id)}: ${esc(a.title)}</h2>
+            <span class="text-xs font-semibold rounded-full px-2.5 py-1 shrink-0"
+              style="${a.status === 'Completed'
+                ? 'background:rgba(56, 189, 248, 0.15); color:#38bdf8; border: 1px solid rgba(56, 189, 248, 0.3)'
+                : 'border:1px dashed var(--muted); color:var(--muted)'}">${esc(a.status)}</span>
+          </div>
+          <p class="muted text-sm mt-2.5 leading-relaxed">${esc(a.desc)}</p>
+          <div class="flex flex-wrap gap-1.5 mt-3.5 text-xs text-sky-400/80">
+            ${a.tags.map((t) => `<span class="bg-[#18263a] px-2 py-0.5 rounded border border-[#23354f]">#${esc(t)}</span>`).join('')}
+          </div>
         </div>
-        <p class="muted text-sm mt-2 flex-1">${esc(a.desc)}</p>
-        <div class="flex flex-wrap gap-1.5 mt-3 text-xs muted">${a.tags.map((t) => `<span>#${esc(t)}</span>`).join('')}</div>
-        <div class="flex flex-wrap gap-2 mt-4">
+        <div class="flex flex-wrap gap-2 mt-5 pt-3 border-t border-[#1a283d]">
           <a class="btn btn-main" href="${a.demo}">View live demo</a>
           <a class="btn" href="${a.source}">View source code</a>
           <a class="btn" href="${a.docs}">Read the docs</a>
@@ -111,10 +153,11 @@
       </article>`).join('');
   }
 
-  $('#q').addEventListener('input', (e) => { state.q = e.target.value; render(); });
-  $('#tags').addEventListener('click', (e) => {
-    const b = e.target.closest('button'); if (b) { state.tag = b.dataset.tag; render(); }
+  $('#q').addEventListener('input', (e) => { 
+    searchQuery = e.target.value; 
+    render(); 
   });
+
   render();
 </script>
 </body>
