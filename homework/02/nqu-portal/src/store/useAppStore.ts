@@ -2,10 +2,12 @@ import type { RealtimePostgresChangesPayload, Session } from '@supabase/supabase
 import { create } from 'zustand';
 import {
   ADMIN_EMAIL,
+  COURSE_DEPARTMENTS,
   MAX_CREDITS_PER_SEMESTER,
   PERIOD_CODES,
   WEEKDAYS,
   calculateAge,
+  canTakeCourse,
   formatSlots,
   scoreToGrade,
   toDateInputValue,
@@ -354,6 +356,7 @@ function validateCourse(input: NewCourseInput): string | null {
     [input.college, 'College'], [input.department, 'Department'], [input.classroom, 'Classroom'],
   ];
   for (const [value, label] of text) if (value.trim() === '') return `${label} is required.`;
+  if (!COURSE_DEPARTMENTS.includes(input.department.trim())) return 'Please choose a department from the list.';
   if (!Number.isInteger(input.credits) || input.credits < 1 || input.credits > 6) return 'Credits must be a whole number from 1 to 6.';
   if (!Number.isInteger(input.capacity) || input.capacity < 1) return 'Capacity must be at least 1.';
   if (input.slots.length === 0) return 'At least one timetable slot is required.';
@@ -507,7 +510,7 @@ export const useAppStore = create<AppState>()((set, get) => {
         password,
         options: {
           data: { full_name: cleanName },
-            emailRedirectTo: window.location.origin + window.location.pathname,
+          emailRedirectTo: window.location.href.split('#')[0],
             },
       });
       if (error) {
@@ -612,6 +615,15 @@ export const useAppStore = create<AppState>()((set, get) => {
       }
       const course = state.courses.find((c) => c.id === courseId && c.semester === state.currentSemester);
       if (!course) return fail('COURSE_NOT_FOUND', 'This course is not available for the current semester.');
+
+      // Required courses belong to one department (the database trigger enforces the same rule).
+      const studentDepartment = state.profiles[user.id]?.department ?? '';
+      if (!canTakeCourse(course, studentDepartment)) {
+        return fail(
+          'NOT_ELIGIBLE',
+          `${course.code} is a required course for ${course.department} students only. Your department is ${studentDepartment || 'not set'}.`,
+        );
+      }
 
       const enrolled = getEnrolledCourses(state, user.id);
       if (enrolled.some((c) => c.id === course.id)) {

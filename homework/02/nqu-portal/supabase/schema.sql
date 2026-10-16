@@ -192,10 +192,11 @@ as $$
 declare
   c            public.courses%rowtype;
   completed    boolean;
+  student_dept text;
   cur_credits  int;
   clash        text;
 begin
-  select is_profile_completed into completed from public.profiles where id = new.student_id;
+  select is_profile_completed, department into completed, student_dept from public.profiles where id = new.student_id;
   if not coalesce(completed, false) then
     raise exception 'PROFILE_INCOMPLETE|Please complete your student profile before selecting courses.';
   end if;
@@ -206,6 +207,12 @@ begin
     raise exception 'COURSE_NOT_FOUND|This course is not available for the current semester.';
   end if;
   new.semester := c.semester;
+
+  -- Required courses belong to one department; 'All Departments' marks campus-wide courses.
+  if c.type = 'Required' and c.department <> 'All Departments' and c.department is distinct from student_dept then
+    raise exception 'NOT_ELIGIBLE|% is a required course for % students only. Your department is %.',
+      c.course_code, c.department, coalesce(student_dept, 'not set');
+  end if;
 
   if c.enrolled_count >= c.capacity then
     raise exception 'COURSE_FULL|% has reached its capacity of % students.', c.course_code, c.capacity;
@@ -350,22 +357,22 @@ end $$;
 -- -----------------------------------------------------------------------------
 insert into public.courses (course_code, title, description, instructor, college, department, type, credits, classroom, capacity, semester, slots)
 select * from (values
- ('CSIE1101','Introduction to Computer Science','Foundations of computing: algorithms, number systems, basic programming in Python, and computational thinking.','Prof. Wei-Lin Chen','College of Engineering','Department of Computer Science and Information Engineering','Required',3,'Engineering Bldg E301',60,'2026 Fall','[{"day":"Mon","period":"2"},{"day":"Mon","period":"3"},{"day":"Mon","period":"4"}]'::jsonb),
- ('CSIE2203','Data Structures','Arrays, linked lists, stacks, queues, trees, graphs, hashing, and complexity analysis.','Prof. Hsiu-Ping Lin','College of Engineering','Department of Computer Science and Information Engineering','Required',3,'Engineering Bldg E305',50,'2026 Fall','[{"day":"Tue","period":"5"},{"day":"Tue","period":"6"},{"day":"Tue","period":"7"}]'::jsonb),
- ('CSIE2305','Database Systems','Relational model, SQL, normalization, transactions, and an introduction to NoSQL stores.','Prof. Jason Wu','College of Engineering','Department of Computer Science and Information Engineering','Required',3,'Engineering Bldg E302',50,'2026 Fall','[{"day":"Wed","period":"2"},{"day":"Wed","period":"3"},{"day":"Wed","period":"4"}]'::jsonb),
- ('CSIE3401','Web Application Development','Modern front-end and back-end web development: HTTP, REST APIs, React, and deployment.','Prof. Mei-Hua Tsai','College of Engineering','Department of Computer Science and Information Engineering','Elective',3,'Computer Lab C204',40,'2026 Fall','[{"day":"Thu","period":"5"},{"day":"Thu","period":"6"},{"day":"Thu","period":"7"}]'::jsonb),
- ('CSIE3502','Machine Learning Fundamentals','Supervised and unsupervised learning, model evaluation, and practical projects with Python.','Prof. Kevin Huang','College of Engineering','Department of Computer Science and Information Engineering','Elective',3,'Engineering Bldg E401',45,'2026 Fall','[{"day":"Fri","period":"2"},{"day":"Fri","period":"3"},{"day":"Fri","period":"4"}]'::jsonb),
- ('MATH1101','Calculus I','Limits, derivatives, integrals, and their applications in science and engineering.','Prof. Yu-Ting Liu','College of Engineering','Department of Applied Mathematics','Required',3,'Science Bldg S102',80,'2026 Fall','[{"day":"Mon","period":"3"},{"day":"Mon","period":"4"},{"day":"Wed","period":"1"}]'::jsonb),
- ('MATH2101','Linear Algebra','Vector spaces, matrices, determinants, eigenvalues, and linear transformations.','Prof. Chun-Yi Peng','College of Engineering','Department of Applied Mathematics','Required',3,'Science Bldg S104',60,'2026 Fall','[{"day":"Tue","period":"2"},{"day":"Tue","period":"3"},{"day":"Tue","period":"4"}]'::jsonb),
- ('EE2201','Digital Logic Design','Boolean algebra, combinational and sequential circuits, and hardware description basics.','Prof. Chia-Hao Lee','College of Engineering','Department of Electrical Engineering','Required',3,'Engineering Bldg E204',50,'2026 Fall','[{"day":"Wed","period":"5"},{"day":"Wed","period":"6"},{"day":"Wed","period":"7"}]'::jsonb),
- ('BA1101','Principles of Management','Core management functions: planning, organizing, leading, and controlling in modern organizations.','Prof. Shu-Fen Wang','College of Management','Department of Business Administration','Required',3,'Management Bldg M201',70,'2026 Fall','[{"day":"Mon","period":"6"},{"day":"Mon","period":"7"},{"day":"Mon","period":"8"}]'::jsonb),
- ('BA2301','Marketing Management','Market analysis, segmentation, branding, pricing, and digital marketing strategy.','Prof. Daniel Yeh','College of Management','Department of Business Administration','Required',3,'Management Bldg M305',60,'2026 Fall','[{"day":"Thu","period":"2"},{"day":"Thu","period":"3"},{"day":"Thu","period":"4"}]'::jsonb),
- ('HM1201','Introduction to Hospitality Management','Overview of the hotel, restaurant, and tourism industries and service-quality management.','Prof. Grace Lin','College of Hospitality and Tourism','Department of Hospitality Management','Elective',3,'Hospitality Bldg H102',45,'2026 Fall','[{"day":"Thu","period":"6"},{"day":"Thu","period":"7"},{"day":"Thu","period":"8"}]'::jsonb),
- ('ENG1101','English Composition and Reading','Academic reading strategies and paragraph-to-essay writing for university study.','Prof. Emily Carter','Center for General Education','Center for General Education','General Education',2,'Language Bldg L105',35,'2026 Fall','[{"day":"Fri","period":"6"},{"day":"Fri","period":"7"}]'::jsonb),
- ('GE1001','Taiwan Society and Culture','An interdisciplinary introduction to the history, society, and cultural landscape of Taiwan and Kinmen.','Prof. Ming-Chieh Hsu','Center for General Education','Center for General Education','General Education',2,'General Education Hall G201',90,'2026 Fall','[{"day":"Tue","period":"8"},{"day":"Tue","period":"9"}]'::jsonb),
- ('GE1105','Introduction to Philosophy','Key questions in ethics, knowledge, and reasoning, with an emphasis on critical thinking.','Prof. Anna Kuo','Center for General Education','Center for General Education','General Education',2,'General Education Hall G202',90,'2026 Fall','[{"day":"Wed","period":"8"},{"day":"Wed","period":"9"}]'::jsonb),
- ('PE1101','Physical Education I','Fitness fundamentals and a choice of team or individual sports modules.','Coach Brian Tsai','Center for General Education','Office of Physical Education','Physical Education',1,'Main Gymnasium',40,'2026 Fall','[{"day":"Fri","period":"8"}]'::jsonb),
- ('CDS1001','Career Planning Seminar','Noon-hour seminar series on career exploration, resume writing, and interview skills.','Dr. Jenny Hsieh','Office of Student Affairs','Career Development Center','Elective',1,'Student Center Auditorium',100,'2026 Fall','[{"day":"Wed","period":"Z"}]'::jsonb)
+ ('CSIE1101','Introduction to Computer Science','Foundations of computing: algorithms, number systems, basic programming in Python, and computational thinking.','Prof. Wei-Lin Chen','College of Engineering','Computer Science','Required',3,'Engineering Bldg E301',60,'2026 Fall','[{"day":"Mon","period":"2"},{"day":"Mon","period":"3"},{"day":"Mon","period":"4"}]'::jsonb),
+ ('CSIE2203','Data Structures','Arrays, linked lists, stacks, queues, trees, graphs, hashing, and complexity analysis.','Prof. Hsiu-Ping Lin','College of Engineering','Computer Science','Required',3,'Engineering Bldg E305',50,'2026 Fall','[{"day":"Tue","period":"5"},{"day":"Tue","period":"6"},{"day":"Tue","period":"7"}]'::jsonb),
+ ('CSIE2305','Database Systems','Relational model, SQL, normalization, transactions, and an introduction to NoSQL stores.','Prof. Jason Wu','College of Engineering','Computer Science','Required',3,'Engineering Bldg E302',50,'2026 Fall','[{"day":"Wed","period":"2"},{"day":"Wed","period":"3"},{"day":"Wed","period":"4"}]'::jsonb),
+ ('CSIE3401','Web Application Development','Modern front-end and back-end web development: HTTP, REST APIs, React, and deployment.','Prof. Mei-Hua Tsai','College of Engineering','Computer Science','Elective',3,'Computer Lab C204',40,'2026 Fall','[{"day":"Thu","period":"5"},{"day":"Thu","period":"6"},{"day":"Thu","period":"7"}]'::jsonb),
+ ('CSIE3502','Machine Learning Fundamentals','Supervised and unsupervised learning, model evaluation, and practical projects with Python.','Prof. Kevin Huang','College of Engineering','Computer Science','Elective',3,'Engineering Bldg E401',45,'2026 Fall','[{"day":"Fri","period":"2"},{"day":"Fri","period":"3"},{"day":"Fri","period":"4"}]'::jsonb),
+ ('MATH1101','Calculus I','Limits, derivatives, integrals, and their applications in science and engineering.','Prof. Yu-Ting Liu','College of Engineering','Applied Mathematics','Required',3,'Science Bldg S102',80,'2026 Fall','[{"day":"Mon","period":"3"},{"day":"Mon","period":"4"},{"day":"Wed","period":"1"}]'::jsonb),
+ ('MATH2101','Linear Algebra','Vector spaces, matrices, determinants, eigenvalues, and linear transformations.','Prof. Chun-Yi Peng','College of Engineering','Applied Mathematics','Required',3,'Science Bldg S104',60,'2026 Fall','[{"day":"Tue","period":"2"},{"day":"Tue","period":"3"},{"day":"Tue","period":"4"}]'::jsonb),
+ ('EE2201','Digital Logic Design','Boolean algebra, combinational and sequential circuits, and hardware description basics.','Prof. Chia-Hao Lee','College of Engineering','Electrical Engineering','Required',3,'Engineering Bldg E204',50,'2026 Fall','[{"day":"Wed","period":"5"},{"day":"Wed","period":"6"},{"day":"Wed","period":"7"}]'::jsonb),
+ ('BA1101','Principles of Management','Core management functions: planning, organizing, leading, and controlling in modern organizations.','Prof. Shu-Fen Wang','College of Management','Business Administration','Required',3,'Management Bldg M201',70,'2026 Fall','[{"day":"Mon","period":"6"},{"day":"Mon","period":"7"},{"day":"Mon","period":"8"}]'::jsonb),
+ ('BA2301','Marketing Management','Market analysis, segmentation, branding, pricing, and digital marketing strategy.','Prof. Daniel Yeh','College of Management','Business Administration','Required',3,'Management Bldg M305',60,'2026 Fall','[{"day":"Thu","period":"2"},{"day":"Thu","period":"3"},{"day":"Thu","period":"4"}]'::jsonb),
+ ('HM1201','Introduction to Hospitality Management','Overview of the hotel, restaurant, and tourism industries and service-quality management.','Prof. Grace Lin','College of Hospitality and Tourism','Hospitality Management','Elective',3,'Hospitality Bldg H102',45,'2026 Fall','[{"day":"Thu","period":"6"},{"day":"Thu","period":"7"},{"day":"Thu","period":"8"}]'::jsonb),
+ ('ENG1101','English Composition and Reading','Academic reading strategies and paragraph-to-essay writing for university study.','Prof. Emily Carter','Center for General Education','All Departments','General Education',2,'Language Bldg L105',35,'2026 Fall','[{"day":"Fri","period":"6"},{"day":"Fri","period":"7"}]'::jsonb),
+ ('GE1001','Taiwan Society and Culture','An interdisciplinary introduction to the history, society, and cultural landscape of Taiwan and Kinmen.','Prof. Ming-Chieh Hsu','Center for General Education','All Departments','General Education',2,'General Education Hall G201',90,'2026 Fall','[{"day":"Tue","period":"8"},{"day":"Tue","period":"9"}]'::jsonb),
+ ('GE1105','Introduction to Philosophy','Key questions in ethics, knowledge, and reasoning, with an emphasis on critical thinking.','Prof. Anna Kuo','Center for General Education','All Departments','General Education',2,'General Education Hall G202',90,'2026 Fall','[{"day":"Wed","period":"8"},{"day":"Wed","period":"9"}]'::jsonb),
+ ('PE1101','Physical Education I','Fitness fundamentals and a choice of team or individual sports modules.','Coach Brian Tsai','Center for General Education','All Departments','Physical Education',1,'Main Gymnasium',40,'2026 Fall','[{"day":"Fri","period":"8"}]'::jsonb),
+ ('CDS1001','Career Planning Seminar','Noon-hour seminar series on career exploration, resume writing, and interview skills.','Dr. Jenny Hsieh','Office of Student Affairs','All Departments','Elective',1,'Student Center Auditorium',100,'2026 Fall','[{"day":"Wed","period":"Z"}]'::jsonb)
 ) as v(course_code, title, description, instructor, college, department, type, credits, classroom, capacity, semester, slots)
 where not exists (select 1 from public.courses);
 

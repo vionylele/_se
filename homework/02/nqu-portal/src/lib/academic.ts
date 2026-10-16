@@ -1,4 +1,5 @@
 import type {
+  Course,
   CourseType,
   GradeRecord,
   GradeScaleEntry,
@@ -117,6 +118,26 @@ export const DEPARTMENTS: string[] = [
   'Hospitality Management',
   'International Tourism',
 ];
+
+/** Marker department for campus-wide courses (General Education, PE, ...): open to every student. */
+export const ALL_DEPARTMENTS = 'All Departments';
+
+/** Departments an admin can assign a course to: every student department plus the campus-wide marker. */
+export const COURSE_DEPARTMENTS: string[] = [...DEPARTMENTS, ALL_DEPARTMENTS];
+
+/** True when the course belongs to the student's own department or is campus-wide. */
+export function isHomeCourse(course: Pick<Course, 'department'>, studentDepartment: string): boolean {
+  return course.department === ALL_DEPARTMENTS || course.department === studentDepartment;
+}
+
+/**
+ * Enrollment rule: a Required course can only be taken by students of its own department
+ * (or by everyone when it is campus-wide). Electives from any department stay open.
+ * Mirrored by the enrollments_before_insert trigger in supabase/schema.sql.
+ */
+export function canTakeCourse(course: Pick<Course, 'department' | 'type'>, studentDepartment: string): boolean {
+  return course.type !== 'Required' || isHomeCourse(course, studentDepartment);
+}
 
 export interface AcademicYearOption {
   value: string; // year level as a string: "1".."5"

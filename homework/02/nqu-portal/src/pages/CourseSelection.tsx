@@ -1,28 +1,14 @@
 import { useMemo, useState } from 'react';
 import { Check, Plus, Search, Trash2, X } from 'lucide-react';
+import CourseTypeBadge from '../components/CourseTypeBadge';
 import CreditProgress from '../components/CreditProgress';
 import { FormAlert } from '../components/ui/FormFeedback';
 import TextField from '../components/ui/TextField';
-import { COURSE_TYPES, WEEKDAYS, WEEKDAY_NAMES, formatSlots } from '../lib/academic';
+import { COURSE_TYPES, WEEKDAYS, WEEKDAY_NAMES, canTakeCourse, formatSlots, isHomeCourse } from '../lib/academic';
 import { getEnrolledCourses, selectCurrentUser, sumCredits, useAppStore } from '../store/useAppStore';
 import type { Course, CourseType, Weekday } from '../types';
 
 type Feedback = { variant: 'error' | 'success' | 'info'; message: string } | null;
-
-const TYPE_STYLES: Record<CourseType, string> = {
-  Required: 'bg-rose-50 text-rose-700 ring-rose-200',
-  Elective: 'bg-sky-50 text-sky-700 ring-sky-200',
-  'General Education': 'bg-violet-50 text-violet-700 ring-violet-200',
-  'Physical Education': 'bg-amber-50 text-amber-700 ring-amber-200',
-};
-
-function TypeBadge({ type }: { type: CourseType }) {
-  return (
-    <span className={`inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${TYPE_STYLES[type]}`}>
-      {type}
-    </span>
-  );
-}
 
 /** One line per meeting day, e.g. "Mon: Period 3, 4" / "Wed: Period 1". */
 function Schedule({ course }: { course: Course }) {
@@ -44,6 +30,7 @@ const TD = 'px-4 py-3 align-top text-sm text-slate-700';
 
 export default function CourseSelection() {
   const user = useAppStore(selectCurrentUser);
+  const studentDepartment = useAppStore((s) => (user ? s.profiles[user.id]?.department : undefined)) ?? '';
   const courses = useAppStore((s) => s.courses);
   const enrollments = useAppStore((s) => s.enrollments);
   const currentSemester = useAppStore((s) => s.currentSemester);
@@ -54,13 +41,30 @@ export default function CourseSelection() {
   const [department, setDepartment] = useState('All');
   const [day, setDay] = useState<'All' | Weekday>('All');
   const [type, setType] = useState<'All' | CourseType>('All');
+  const [includeOthers, setIncludeOthers] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
 
   // ----------------------------- Derived data -----------------------------
 
-  const catalog = useMemo(
+  const semesterCourses = useMemo(
     () => courses.filter((c) => c.semester === currentSemester).sort((a, b) => a.code.localeCompare(b.code)),
     [courses, currentSemester],
+  );
+
+  // A student sees their own department's courses plus campus-wide ones. Electives offered by other
+  // departments are opt-in; other departments' Required courses are never offered.
+  const otherElectives = useMemo(
+    () => semesterCourses.filter((c) => !isHomeCourse(c, studentDepartment) && canTakeCourse(c, studentDepartment)),
+    [semesterCourses, studentDepartment],
+  );
+  const catalog = useMemo(
+    () => semesterCourses.filter((c) => isHomeCourse(c, studentDepartment) || (includeOthers && canTakeCourse(c, studentDepartment))),
+    [semesterCourses, studentDepartment, includeOthers],
+  );
+
+  const requiredCourses = useMemo(
+    () => semesterCourses.filter((c) => c.type === 'Required' && isHomeCourse(c, studentDepartment)),
+    [semesterCourses, studentDepartment],
   );
 
   const departments = useMemo(() => Array.from(new Set(catalog.map((c) => c.department))).sort(), [catalog]);
@@ -71,6 +75,8 @@ export default function CourseSelection() {
   );
   const enrolledIds = useMemo(() => new Set(enrolled.map((c) => c.id)), [enrolled]);
   const totalCredits = sumCredits(enrolled);
+  const requiredTaken = requiredCourses.filter((c) => enrolledIds.has(c.id));
+  const requiredLeft = requiredCourses.filter((c) => !enrolledIds.has(c.id));
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -122,6 +128,23 @@ export default function CourseSelection() {
         <div className="card p-4 sm:p-5">
           <CreditProgress credits={totalCredits} />
         </div>
+        {requiredCourses.length > 0 && (
+          <div className="card flex flex-wrap items-center justify-between gap-3 p-4 sm:p-5">
+            <div className="text-sm">
+              <p className="font-semibold text-slate-900">
+                Required courses for {studentDepartment || 'your department'}: {requiredTaken.length} of {requiredCourses.length} selected
+              </p>
+              <p className="text-slate-500">
+                {requiredLeft.length === 0
+                  ? 'You have selected every required course offered this semester.'
+                  : `Still to select: ${requiredLeft.map((c) => c.code).join(', ')}`}
+              </p>
+            </div>
+            <button type="button" className="btn-secondary" onClick={() => setType('Required')} disabled={type === 'Required'}>
+              Show required courses
+            </button>
+          </div>
+        )}
         <FormAlert message={feedback?.message} variant={feedback?.variant} onDismiss={() => setFeedback(null)} />
       </div>
 
@@ -136,6 +159,19 @@ export default function CourseSelection() {
               Showing {filtered.length} of {catalog.length} courses
             </p>
           </div>
+
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-slate-300"
+              checked={includeOthers}
+              onChange={(e) => {
+                setIncludeOthers(e.target.checked);
+                setDepartment('All');
+              }}
+            />
+            Also show electives from other departments ({otherElectives.length})
+          </label>
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[2fr_1.6fr_1fr_1fr_auto] xl:items-end">
             <TextField
@@ -224,7 +260,7 @@ export default function CourseSelection() {
                         <div className="font-medium text-slate-900">{course.title}</div>
                       </td>
                       <td className={TD}>{course.department}</td>
-                      <td className={TD}><TypeBadge type={course.type} /></td>
+                      <td className={TD}><CourseTypeBadge type={course.type} /></td>
                       <td className={TD}>{course.credits}</td>
                       <td className={`${TD} whitespace-nowrap`}>{course.instructor}</td>
                       <td className={TD}><Schedule course={course} /></td>

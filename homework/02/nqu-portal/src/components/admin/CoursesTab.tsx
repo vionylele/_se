@@ -1,9 +1,10 @@
 import { useMemo, useRef, useState, type FormEvent } from 'react';
 import { Pencil, PlusCircle, Save, X } from 'lucide-react';
+import CourseTypeBadge from '../CourseTypeBadge';
 import ConfirmDeleteButton from '../ui/ConfirmDeleteButton';
 import FormField, { fieldClass } from '../ui/FormField';
 import { FormAlert } from '../ui/FormFeedback';
-import { COURSE_TYPES, MAX_CREDITS_PER_SEMESTER, formatSlots } from '../../lib/academic';
+import { ALL_DEPARTMENTS, COURSE_DEPARTMENTS, COURSE_TYPES, MAX_CREDITS_PER_SEMESTER, formatSlots } from '../../lib/academic';
 import { parseSchedule, slotsToText } from '../../lib/schedule';
 import { useAppStore } from '../../store/useAppStore';
 import type { Course, CourseType } from '../../types';
@@ -40,7 +41,12 @@ export default function CoursesTab() {
     () => courses.filter((c) => c.semester === currentSemester).sort((a, b) => a.code.localeCompare(b.code)),
     [courses, currentSemester],
   );
-  const departments = useMemo(() => Array.from(new Set(semesterCourses.map((c) => c.department))).sort(), [semesterCourses]);
+  const [filterDept, setFilterDept] = useState('All');
+  const [filterType, setFilterType] = useState<'All' | CourseType>('All');
+  const visibleCourses = useMemo(
+    () => semesterCourses.filter((c) => (filterDept === 'All' || c.department === filterDept) && (filterType === 'All' || c.type === filterType)),
+    [semesterCourses, filterDept, filterType],
+  );
 
   const parsed = useMemo(() => (form.schedule.trim() ? parseSchedule(form.schedule) : null), [form.schedule]);
   const editingCourse = editingId ? courses.find((c) => c.id === editingId) : undefined;
@@ -88,7 +94,7 @@ export default function CoursesTab() {
     if (!/^[A-Za-z0-9-]{3,12}$/.test(form.code.trim())) found.code = 'Course code must be 3-12 letters or digits (e.g., CSIE2401).';
     if (!form.title.trim()) found.title = 'Please enter the course title.';
     if (!form.instructor.trim()) found.instructor = 'Please enter the instructor name.';
-    if (!form.department.trim()) found.department = 'Please enter or select a department.';
+    if (!COURSE_DEPARTMENTS.includes(form.department)) found.department = 'Please choose a department.';
     if (!Number.isInteger(credits) || credits < 1 || credits > 6) found.credits = 'Credits must be a whole number from 1 to 6.';
     if (!form.classroom.trim()) found.classroom = 'Please enter the classroom.';
     if (!Number.isInteger(capacity) || capacity < 1 || capacity > 500) found.capacity = 'Capacity must be a whole number from 1 to 500.';
@@ -169,12 +175,18 @@ export default function CoursesTab() {
             <input id="c-instructor" className={fieldClass(errors.instructor)} placeholder="e.g., Prof. Wei-Lin Chen"
               value={form.instructor} onChange={(e) => update('instructor', e.target.value)} />
           </FormField>
-          <FormField id="c-department" label="Department" error={errors.department} hint="Pick an existing department or type a new one.">
-            <input id="c-department" list="department-options" className={fieldClass(errors.department)}
-              placeholder="e.g., Computer Science" value={form.department} onChange={(e) => update('department', e.target.value)} />
-            <datalist id="department-options">{departments.map((d) => <option key={d} value={d} />)}</datalist>
+          <FormField id="c-department" label="Department" error={errors.department}
+            hint={`Choose "${ALL_DEPARTMENTS}" for campus-wide courses such as General Education or PE.`}>
+            <select id="c-department" className={fieldClass(errors.department)} value={form.department}
+              onChange={(e) => update('department', e.target.value)}>
+              <option value="">Select a department</option>
+              {COURSE_DEPARTMENTS.map((d) => <option key={d} value={d}>{d === ALL_DEPARTMENTS ? `${d} (campus-wide)` : d}</option>)}
+            </select>
           </FormField>
-          <FormField id="c-type" label="Course Type">
+          <FormField id="c-type" label="Category"
+            hint={form.type === 'Required'
+              ? `Required: only ${form.department && form.department !== ALL_DEPARTMENTS ? form.department : 'the chosen department'} students can enroll.`
+              : 'Required courses are restricted to the chosen department; the other categories are open to everyone.'}>
             <select id="c-type" className="field-input" value={form.type} onChange={(e) => update('type', e.target.value as CourseType)}>
               {COURSE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
@@ -223,27 +235,44 @@ export default function CoursesTab() {
       <section aria-labelledby="catalog-admin-title" className="card overflow-hidden">
         <div className="border-b border-slate-200 p-5">
           <h3 id="catalog-admin-title" className="font-display text-lg font-semibold text-slate-900">
-            Current Catalog <span className="text-sm font-normal text-slate-500">({semesterCourses.length} courses)</span>
+            Current Catalog <span className="text-sm font-normal text-slate-500">({visibleCourses.length} of {semesterCourses.length} courses)</span>
           </h3>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:max-w-xl">
+            <div>
+              <label htmlFor="admin-filter-dept" className="field-label">Department</label>
+              <select id="admin-filter-dept" className="field-input" value={filterDept} onChange={(e) => setFilterDept(e.target.value)}>
+                <option value="All">All departments</option>
+                {COURSE_DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="admin-filter-type" className="field-label">Category</label>
+              <select id="admin-filter-type" className="field-input" value={filterType} onChange={(e) => setFilterType(e.target.value as 'All' | CourseType)}>
+                <option value="All">All categories</option>
+                {COURSE_TYPES.map((x) => <option key={x} value={x}>{x}</option>)}
+              </select>
+            </div>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[1000px] divide-y divide-slate-200">
             <thead className="bg-slate-50">
               <tr>
-                {['Course Code', 'Course Title', 'Department', 'Credits', 'Schedule', 'Classroom', 'Instructor', 'Seats'].map((h) => (
+                {['Course Code', 'Course Title', 'Department', 'Category', 'Credits', 'Schedule', 'Classroom', 'Instructor', 'Seats'].map((h) => (
                   <th key={h} scope="col" className={TH}>{h}</th>
                 ))}
                 <th scope="col" className={`${TH} text-right`}>Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {semesterCourses.map((c) => {
+              {visibleCourses.map((c) => {
                 const taken = c.enrolledCount;
                 return (
                   <tr key={c.id} className={c.id === editingId ? 'bg-brand-50/70' : 'hover:bg-slate-50'}>
                     <td className={`${TD} whitespace-nowrap font-semibold text-slate-900`}>{c.code}</td>
                     <td className={`${TD} min-w-[12rem] font-medium text-slate-900`}>{c.title}</td>
                     <td className={TD}>{c.department}</td>
+                    <td className={TD}><CourseTypeBadge type={c.type} /></td>
                     <td className={TD}>{c.credits}</td>
                     <td className={TD}>{formatSlots(c.slots).split('; ').map((l) => <div key={l} className="whitespace-nowrap">{l}</div>)}</td>
                     <td className={TD}>{c.classroom}</td>

@@ -23,3 +23,10 @@ Only ever use the publishable/anon key in the browser. Never the `service_role` 
 ## 5. Verify
 1. Admin tab: publish an announcement. 2. Student in another browser/incognito window: it appears on the Dashboard with no refresh.
 3. Edit a course as admin: the student's catalogue updates live. 4. Student enrolls: the admin's seat counter (`n / capacity`) changes live.
+
+## 6. Department-based required / elective courses
+Each course has a **Department** (same names as the student profile list, or `All Departments` for campus-wide courses such as General Education / PE) and a **Category** (Required, Elective, General Education, Physical Education).
+- A **Required** course can only be taken by students of its department. The portal hides other departments' Required courses and the database rejects them too.
+- Electives stay open to everyone (students opt in with "Also show electives from other departments").
+
+On an existing database run `supabase/migrations/20261015_department_required_electives.sql` once in the SQL Editor (before using the new site build). It renames the old seed departments and adds the server-side check.

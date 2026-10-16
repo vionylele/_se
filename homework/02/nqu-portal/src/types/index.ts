@@ -189,6 +189,7 @@ export type ActionErrorCode =
   | 'TIME_CONFLICT'
   | 'DUPLICATE'
   | 'EMAIL_NOT_CONFIRMED'
+  | 'NOT_ELIGIBLE'
   | 'NOT_CONFIGURED'
   | 'NETWORK';
 
