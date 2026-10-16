@@ -518,7 +518,15 @@ The dashboard uses demo mode when any of these is true: the URL contains `?demo=
 - `.github/workflows/deploy.yml` - on every push to `main` that touches `frontend/**`, uploads the `frontend` folder and deploys it. No build step is needed (plain HTML + CDN scripts).
 - `frontend/index.html` - contains the demo engine. There is no client-side routing and the page uses no local asset paths, so no `base` setting, `404.html` or HashRouter is required.
 
-### Steps
+### Using this project inside the course portfolio (`_se`)
+
+In the `vionylele/_se` repository this project lives in `homework/05/iot-sensor-hub/`, and the portfolio's own workflow (`.github/workflows/deploy.yml` at the repository root) already publishes the whole repository to GitHub Pages. GitHub only runs workflows from the repository root, so the `.github/` folder inside this project is **not used there**; it is kept for the standalone setup below. The dashboard is then served at:
+
+`https://vionylele.github.io/_se/homework/05/iot-sensor-hub/frontend/`
+
+The "View live demo" button on the portfolio's **Homework 05** card links straight to that page.
+
+### Steps (standalone repository)
 
 1. Create a GitHub repository whose **root is this project folder** (so `.github/` and `frontend/` sit at the top level) and push it to the `main` branch.
 2. Repo -> **Settings** -> **Pages**.
