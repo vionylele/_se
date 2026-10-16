@@ -1,0 +1,66 @@
+name: Deploy portfolio to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Assemble site into _site/
+        run: |
+          set -euo pipefail
+          mkdir -p _site/homework
+          cp index.html 404.html _site/
+          touch _site/.nojekyll
+
+          for dir in homework/*/; do
+            n=$(basename "$dir")
+            out="_site/homework/$n"
+            mkdir -p "$out"
+            if [ -f "${dir}package.json" ]; then
+              # Vite / npm project: build, publish dist/ only (relative base)
+              (cd "$dir" && (npm ci || npm install) && npm run build -- --base=./)
+              rsync -a "${dir}dist/" "$out/"
+            else
+              # Static project: copy everything except heavy or private files
+              rsync -a \
+                --exclude='.venv/' --exclude='venv/' --exclude='__pycache__/' \
+                --exclude='node_modules/' --exclude='.git*' --exclude='.env*' \
+                --exclude='*.py' --exclude='*.pyc' \
+                "$dir" "$out/"
+            fi
+          done
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
