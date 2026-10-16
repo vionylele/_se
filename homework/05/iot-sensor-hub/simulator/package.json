@@ -1,0 +1,13 @@
+{
+  "name": "iot-sensor-hub-simulator",
+  "version": "1.0.0",
+  "description": "Virtual IoT devices that stream telemetry to the backend",
+  "private": true,
+  "main": "simulator.js",
+  "scripts": {
+    "start": "node simulator.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

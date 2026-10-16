@@ -1,0 +1,44 @@
+name: Deploy dashboard to GitHub Pages
+
+# Publishes ONLY the static dashboard (./frontend). The Docker backend, database
+# and simulator cannot run on GitHub Pages, so the page switches to its
+# in-browser demo mode automatically when it is served from github.io.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time; a newer push cancels the older run.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  FOLDER: frontend
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ env.FOLDER }}
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
