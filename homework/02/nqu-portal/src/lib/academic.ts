@@ -131,12 +131,12 @@ export function isHomeCourse(course: Pick<Course, 'department'>, studentDepartme
 }
 
 /**
- * Enrollment rule: a Required course can only be taken by students of its own department
- * (or by everyone when it is campus-wide). Electives from any department stay open.
- * Mirrored by the enrollments_before_insert trigger in supabase/schema.sql.
+ * How a course is labelled for a given student. A course flagged Required is Required only for
+ * students of its own department (or everyone when campus-wide); for other departments' students
+ * the same course is an Elective. Every course can be taken by every student.
  */
-export function canTakeCourse(course: Pick<Course, 'department' | 'type'>, studentDepartment: string): boolean {
-  return course.type !== 'Required' || isHomeCourse(course, studentDepartment);
+export function effectiveCourseType(course: Pick<Course, 'department' | 'type'>, studentDepartment: string): CourseType {
+  return course.type === 'Required' && !isHomeCourse(course, studentDepartment) ? 'Elective' : course.type;
 }
 
 export interface AcademicYearOption {

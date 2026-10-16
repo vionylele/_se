@@ -4,7 +4,7 @@ import CourseTypeBadge from '../components/CourseTypeBadge';
 import CreditProgress from '../components/CreditProgress';
 import { FormAlert } from '../components/ui/FormFeedback';
 import TextField from '../components/ui/TextField';
-import { COURSE_TYPES, WEEKDAYS, WEEKDAY_NAMES, canTakeCourse, formatSlots, isHomeCourse } from '../lib/academic';
+import { COURSE_TYPES, WEEKDAYS, WEEKDAY_NAMES, effectiveCourseType, formatSlots, isHomeCourse } from '../lib/academic';
 import { getEnrolledCourses, selectCurrentUser, sumCredits, useAppStore } from '../store/useAppStore';
 import type { Course, CourseType, Weekday } from '../types';
 
@@ -41,7 +41,6 @@ export default function CourseSelection() {
   const [department, setDepartment] = useState('All');
   const [day, setDay] = useState<'All' | Weekday>('All');
   const [type, setType] = useState<'All' | CourseType>('All');
-  const [includeOthers, setIncludeOthers] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
 
   // ----------------------------- Derived data -----------------------------
@@ -51,16 +50,10 @@ export default function CourseSelection() {
     [courses, currentSemester],
   );
 
-  // A student sees their own department's courses plus campus-wide ones. Electives offered by other
-  // departments are opt-in; other departments' Required courses are never offered.
-  const otherElectives = useMemo(
-    () => semesterCourses.filter((c) => !isHomeCourse(c, studentDepartment) && canTakeCourse(c, studentDepartment)),
-    [semesterCourses, studentDepartment],
-  );
-  const catalog = useMemo(
-    () => semesterCourses.filter((c) => isHomeCourse(c, studentDepartment) || (includeOthers && canTakeCourse(c, studentDepartment))),
-    [semesterCourses, studentDepartment, includeOthers],
-  );
+  // Every course is open to every student. Courses flagged Required are labelled Required only for
+  // students of that department; everyone else sees them as Electives.
+  const catalog = semesterCourses;
+  const typeOf = (c: Course): CourseType => effectiveCourseType(c, studentDepartment);
 
   const requiredCourses = useMemo(
     () => semesterCourses.filter((c) => c.type === 'Required' && isHomeCourse(c, studentDepartment)),
@@ -85,9 +78,9 @@ export default function CourseSelection() {
         (q === '' || c.code.toLowerCase().includes(q) || c.title.toLowerCase().includes(q)) &&
         (department === 'All' || c.department === department) &&
         (day === 'All' || c.slots.some((s) => s.day === day)) &&
-        (type === 'All' || c.type === type),
+        (type === 'All' || typeOf(c) === type),
     );
-  }, [catalog, query, department, day, type]);
+  }, [catalog, query, department, day, type, studentDepartment]);
 
   const hasActiveFilters = query !== '' || department !== 'All' || day !== 'All' || type !== 'All';
   const clearFilters = () => {
@@ -159,19 +152,6 @@ export default function CourseSelection() {
               Showing {filtered.length} of {catalog.length} courses
             </p>
           </div>
-
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded border-slate-300"
-              checked={includeOthers}
-              onChange={(e) => {
-                setIncludeOthers(e.target.checked);
-                setDepartment('All');
-              }}
-            />
-            Also show electives from other departments ({otherElectives.length})
-          </label>
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[2fr_1.6fr_1fr_1fr_auto] xl:items-end">
             <TextField
@@ -260,7 +240,7 @@ export default function CourseSelection() {
                         <div className="font-medium text-slate-900">{course.title}</div>
                       </td>
                       <td className={TD}>{course.department}</td>
-                      <td className={TD}><CourseTypeBadge type={course.type} /></td>
+                      <td className={TD}><CourseTypeBadge type={typeOf(course)} /></td>
                       <td className={TD}>{course.credits}</td>
                       <td className={`${TD} whitespace-nowrap`}>{course.instructor}</td>
                       <td className={TD}><Schedule course={course} /></td>

@@ -185,8 +185,8 @@ export default function CoursesTab() {
           </FormField>
           <FormField id="c-type" label="Category"
             hint={form.type === 'Required'
-              ? `Required: only ${form.department && form.department !== ALL_DEPARTMENTS ? form.department : 'the chosen department'} students can enroll.`
-              : 'Required courses are restricted to the chosen department; the other categories are open to everyone.'}>
+              ? `Required for ${form.department && form.department !== ALL_DEPARTMENTS ? form.department : 'the chosen department'} students. Other departments' students see it as an Elective and can still take it.`
+              : 'Shown as written to every student.'}>
             <select id="c-type" className="field-input" value={form.type} onChange={(e) => update('type', e.target.value as CourseType)}>
               {COURSE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>

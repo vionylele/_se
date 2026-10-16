@@ -3,7 +3,9 @@
 --
 -- 1) Course departments must use the same names as student profiles
 --    (see DEPARTMENTS in src/lib/academic.ts). 'All Departments' = campus-wide.
--- 2) The enrollment trigger rejects a Required course of another department.
+-- 2) Required is relative: a Required course is Required for its own department and shown as an
+--    Elective to everyone else. Any student can enroll in any course, so this script also
+--    restores the plain enrollment trigger (re-run it even if you ran an earlier version).
 
 update public.courses set department = case department
   when 'Department of Computer Science and Information Engineering' then 'Computer Science'
@@ -26,11 +28,10 @@ as $$
 declare
   c            public.courses%rowtype;
   completed    boolean;
-  student_dept text;
   cur_credits  int;
   clash        text;
 begin
-  select is_profile_completed, department into completed, student_dept from public.profiles where id = new.student_id;
+  select is_profile_completed into completed from public.profiles where id = new.student_id;
   if not coalesce(completed, false) then
     raise exception 'PROFILE_INCOMPLETE|Please complete your student profile before selecting courses.';
   end if;
@@ -41,12 +42,6 @@ begin
     raise exception 'COURSE_NOT_FOUND|This course is not available for the current semester.';
   end if;
   new.semester := c.semester;
-
-  -- Required courses belong to one department; 'All Departments' marks campus-wide courses.
-  if c.type = 'Required' and c.department <> 'All Departments' and c.department is distinct from student_dept then
-    raise exception 'NOT_ELIGIBLE|% is a required course for % students only. Your department is %.',
-      c.course_code, c.department, coalesce(student_dept, 'not set');
-  end if;
 
   if c.enrolled_count >= c.capacity then
     raise exception 'COURSE_FULL|% has reached its capacity of % students.', c.course_code, c.capacity;

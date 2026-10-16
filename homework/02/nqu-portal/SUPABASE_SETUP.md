@@ -26,7 +26,7 @@ Only ever use the publishable/anon key in the browser. Never the `service_role` 
 
 ## 6. Department-based required / elective courses
 Each course has a **Department** (same names as the student profile list, or `All Departments` for campus-wide courses such as General Education / PE) and a **Category** (Required, Elective, General Education, Physical Education).
-- A **Required** course can only be taken by students of its department. The portal hides other departments' Required courses and the database rejects them too.
-- Electives stay open to everyone (students opt in with "Also show electives from other departments").
+- A **Required** course is Required for students of its department. Students of other departments see the same course as an **Elective** and can still take it.
+- Campus-wide (`All Departments`) courses look the same to everyone.
 
 On an existing database run `supabase/migrations/20261015_department_required_electives.sql` once in the SQL Editor (before using the new site build). It renames the old seed departments and adds the server-side check.

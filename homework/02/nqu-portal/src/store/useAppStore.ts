@@ -7,7 +7,6 @@ import {
   PERIOD_CODES,
   WEEKDAYS,
   calculateAge,
-  canTakeCourse,
   formatSlots,
   scoreToGrade,
   toDateInputValue,
@@ -615,15 +614,6 @@ export const useAppStore = create<AppState>()((set, get) => {
       }
       const course = state.courses.find((c) => c.id === courseId && c.semester === state.currentSemester);
       if (!course) return fail('COURSE_NOT_FOUND', 'This course is not available for the current semester.');
-
-      // Required courses belong to one department (the database trigger enforces the same rule).
-      const studentDepartment = state.profiles[user.id]?.department ?? '';
-      if (!canTakeCourse(course, studentDepartment)) {
-        return fail(
-          'NOT_ELIGIBLE',
-          `${course.code} is a required course for ${course.department} students only. Your department is ${studentDepartment || 'not set'}.`,
-        );
-      }
 
       const enrolled = getEnrolledCourses(state, user.id);
       if (enrolled.some((c) => c.id === course.id)) {
