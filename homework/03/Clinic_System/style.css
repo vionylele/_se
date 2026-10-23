@@ -1,0 +1,37 @@
+/* Minimal custom styles complementing Tailwind CSS */
+:focus-visible { outline: 2px solid #1B6B63; outline-offset: 2px; }
+
+.input {
+  width: 100%; border: 1px solid #cbd5d1; border-radius: .5rem; padding: .55rem .75rem;
+  background: #fff; font-size: .9rem; transition: border-color .15s, box-shadow .15s;
+}
+.input:focus { border-color: #1B6B63; box-shadow: 0 0 0 3px rgba(27,107,99,.15); outline: none; }
+.label { display: block; font-size: .8rem; font-weight: 600; color: #475955; margin-bottom: .25rem; }
+
+.btn { display: inline-flex; align-items: center; gap: .4rem; border-radius: .5rem; padding: .5rem .9rem;
+  font-size: .875rem; font-weight: 600; transition: background .15s; cursor: pointer; }
+.btn-primary { background: #14554F; color: #fff; }
+.btn-primary:hover { background: #0F4440; }
+.btn-ghost { background: #fff; color: #334; border: 1px solid #cbd5d1; }
+.btn-ghost:hover { background: #EAF4F1; }
+.btn-danger { background: #fff; color: #B42318; border: 1px solid #f3c2bd; }
+.btn-danger:hover { background: #FEF3F2; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.slot { padding: .45rem 0; border: 1px solid #cbd5d1; border-radius: .5rem; background: #fff;
+  font-size: .85rem; font-weight: 600; font-variant-numeric: tabular-nums; cursor: pointer; }
+.slot:hover:not(:disabled) { border-color: #1B6B63; background: #EAF4F1; }
+.slot.selected { background: #14554F; color: #fff; border-color: #14554F; }
+.slot:disabled { color: #a3aeab; background: #eef1f0; text-decoration: line-through; cursor: not-allowed; }
+
+.badge { display: inline-block; padding: .15rem .6rem; border-radius: 999px; font-size: .75rem; font-weight: 600; }
+.b-Scheduled   { background: #DBEAFE; color: #1E40AF; }
+.b-Rescheduled { background: #FEF3C7; color: #92400E; }
+.b-Completed   { background: #D1FAE5; color: #065F46; }
+.b-Cancelled   { background: #FEE2E2; color: #991B1B; }
+.b-No-Show     { background: #E5E7EB; color: #374151; }
+
+.card { background: #fff; border: 1px solid #dfe7e4; border-radius: .75rem; }
+.modal-panel { animation: pop .18s ease-out; }
+@keyframes pop { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .modal-panel { animation: none; } }
