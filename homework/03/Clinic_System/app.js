@@ -3,7 +3,7 @@
 
 const SUPABASE_URL = 'https://xwchiameamzcwpbwyfea.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh3Y2hpYW1lYW16Y3dwYnd5ZmVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxNTAyODYsImV4cCI6MjEwNzcyNjI4Nn0.KlwXGphzy6ptCfnniV2Lqm-sDgHfw0sv7NE_FqBlRTk';
-const ADMIN_EMAIL = 'viony07@gmail.com';
+const ADMIN_EMAIL = 'vionylee07@gmail.com';
 const DEPARTMENTS = ['General Medicine', 'Family Medicine', 'ENT', 'Pediatrics'];
 const STATUSES = ['Scheduled', 'Rescheduled', 'Completed', 'Cancelled', 'No-Show'];
 
