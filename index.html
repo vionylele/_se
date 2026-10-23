@@ -117,11 +117,26 @@
       desc: 'Description coming soon.',
       demo: './homework/02/', source: REPO + '/tree/main/homework/02',
       docs: REPO + '/blob/main/homework/02/README.md' },
+    { id: '03', title: 'Harbor Family Clinic (Registration System)', status: 'Completed',
+      tags: ['JavaScript', 'Tailwind', 'Supabase', 'Web'],
+      desc: 'Clinic registration and outpatient web app. Patients book, reschedule and cancel visits; staff manage a live schedule. Enforces Taiwan clinic hours and break rules in the browser and the database.',
+      demo: './homework/03/Clinic_System/', source: REPO + '/tree/main/homework/03/Clinic_System',
+      docs: REPO + '/blob/main/homework/03/Clinic_System/README.md' },
+    { id: '04', title: 'Git Branching and Forking Exercise', status: 'Completed',
+      tags: ['Git', 'GitHub', 'Version Control'],
+      desc: 'Practice with branches, pull requests and forks across two repositories. The docs list the commit history for each branch. This one has no web demo.',
+      demo: null, source: REPO + '/tree/main/homework/04',
+      docs: REPO + '/blob/main/homework/04/README.md' },
     { id: '05', title: 'IoT Sensor Monitoring Hub', status: 'Completed',
       tags: ['Docker', 'Node.js', 'PostgreSQL', 'IoT'],
       desc: 'Docker Compose stack (Nginx, Node.js API, PostgreSQL, device simulator) with a live dashboard. The hosted demo simulates the sensors in your browser, since GitHub Pages serves static files only.',
       demo: './homework/05/iot-sensor-hub/frontend/', source: REPO + '/tree/main/homework/05/iot-sensor-hub',
       docs: REPO + '/blob/main/homework/05/iot-sensor-hub/README.md' },
+    { id: '06', title: 'Automated Testing Suite and QA Dashboard', status: 'Completed',
+      tags: ['Testing', 'Vitest', 'Playwright', 'QA'],
+      desc: 'Three-tier test suite (unit, system/API, end-to-end) for the Homework 03 clinic app, with a dashboard summarising the results.',
+      demo: './homework/06/', source: REPO + '/tree/main/homework/06',
+      docs: REPO + '/blob/main/homework/06/README.md' },
   ];
 
   const $ = (s) => document.querySelector(s);
@@ -152,7 +167,9 @@
           </div>
         </div>
         <div class="flex flex-wrap gap-2 mt-5 pt-3 border-t border-[#1a283d]">
-          <a class="btn btn-main" href="${a.demo}">View live demo</a>
+          ${a.demo
+            ? `<a class="btn btn-main" href="${a.demo}">View live demo</a>`
+            : `<span class="btn" aria-disabled="true" style="opacity:.5;cursor:not-allowed">No web demo</span>`}
           <a class="btn" href="${a.source}">View source code</a>
           <a class="btn" href="${a.docs}">Read the docs</a>
         </div>

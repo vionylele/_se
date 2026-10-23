@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Homework 06: Automated Testing Suite &amp; QA Dashboard</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.441.0/dist/umd/lucide.min.js"></script>
+<style>
+  :root { --bg:#0b111c; --ink:#e6edf6; --muted:#8b9bb2; --line:#1e2c40; --card:#131d2e; --card-hover:#19273c; --accent:#38bdf8; --glow:rgba(56,189,248,.15); }
+  body { background:var(--bg); color:var(--ink); font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .muted { color:var(--muted); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:.75rem; }
+  .btn { display:inline-flex; align-items:center; gap:.4rem; border:1px solid var(--line); padding:.45rem .85rem; border-radius:.5rem; font-weight:500; font-size:.875rem; background:rgba(255,255,255,.03); transition:all .15s; cursor:pointer; color:var(--ink); }
+  .btn:hover { border-color:var(--accent); color:var(--accent); background:var(--glow); }
+  .btn-main { background:var(--accent); border-color:var(--accent); color:#0b111c; font-weight:600; }
+  .btn-main:hover { background:#7dd3fc; border-color:#7dd3fc; color:#0b111c; }
+  .tab { padding:.55rem 1rem; border-radius:.5rem; font-size:.875rem; font-weight:600; border:1px solid transparent; color:var(--muted); cursor:pointer; }
+  .tab:hover { color:var(--ink); }
+  .tab[aria-selected="true"] { background:var(--glow); border-color:rgba(56,189,248,.4); color:var(--accent); }
+  .pill { font-size:.7rem; font-weight:700; letter-spacing:.04em; border-radius:999px; padding:.15rem .6rem; border:1px solid; white-space:nowrap; }
+  .s-passed { color:#4ade80; border-color:rgba(74,222,128,.4); background:rgba(74,222,128,.1); }
+  .s-failed { color:#f87171; border-color:rgba(248,113,113,.4); background:rgba(248,113,113,.1); }
+  .s-pending { color:var(--muted); border-color:var(--line); background:rgba(255,255,255,.03); }
+  .term { background:#070b13; border:1px solid var(--line); border-radius:.6rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  input, select { background:var(--card); border:1px solid var(--line); border-radius:.5rem; padding:.5rem .75rem; font-size:.875rem; color:var(--ink); }
+  a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  .row[open] summary .chev { transform:rotate(90deg); }
+  summary { list-style:none; cursor:pointer; } summary::-webkit-details-marker { display:none; }
+</style>
+</head>
+<body class="antialiased min-h-screen">
+
+<header class="max-w-6xl mx-auto px-5 pt-8 pb-6">
+  <a href="../../index.html" class="btn btn-main"><i data-lucide="arrow-left" class="w-4 h-4"></i>&larr; Back to Coursework Portal</a>
+  <h1 class="mt-6 text-3xl sm:text-4xl font-bold tracking-tight text-white">Homework 06: Automated Testing Suite &amp; QA Dashboard</h1>
+  <p class="muted mt-2 max-w-3xl">Validation Suite for Formosa Care Clinic System (<code class="text-sky-300">homework/03/Clinic_System/</code>)</p>
+  <p class="muted mt-1 text-xs">Testing suite architected and developed with assistance from Claude (Anthropic) for Homework 06.</p>
+</header>
+
+<main class="max-w-6xl mx-auto px-5 pb-16 space-y-8">
+
+  <!-- Metric cards -->
+  <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="Summary metrics">
+    <div class="card p-5"><div class="flex items-center gap-2 muted text-sm"><i data-lucide="layers" class="w-4 h-4"></i>Total test suites</div>
+      <p class="text-3xl font-bold mt-2" id="m-suites">3</p><p class="muted text-xs mt-1">Unit &middot; System/API &middot; E2E</p></div>
+    <div class="card p-5"><div class="flex items-center gap-2 muted text-sm"><i data-lucide="list-checks" class="w-4 h-4"></i>Test cases listed</div>
+      <p class="text-3xl font-bold mt-2" id="m-cases">0</p><p class="muted text-xs mt-1" id="m-cases-sub">grouped scenarios</p></div>
+    <div class="card p-5"><div class="flex items-center gap-2 muted text-sm"><i data-lucide="circle-check" class="w-4 h-4"></i>Passed</div>
+      <p class="text-3xl font-bold mt-2"><span id="m-pass">&ndash;</span><span class="muted text-lg font-medium"> / <span id="m-total">0</span></span></p>
+      <p class="muted text-xs mt-1" id="m-pass-sub">No results loaded &mdash; run the suite, then see &ldquo;Showing real results&rdquo; below</p></div>
+    <div class="card p-5 flex flex-col justify-between"><div>
+      <div class="flex items-center gap-2 muted text-sm"><i data-lucide="shield-check" class="w-4 h-4"></i>Business rules covered</div>
+      <p class="text-3xl font-bold mt-2">5 <span class="muted text-lg font-medium">/ 5</span></p>
+      <p class="muted text-xs mt-1">Hours &middot; breaks &middot; 1-hour rule &middot; roles &middot; cancel reason</p></div>
+      <a class="btn btn-main mt-4 justify-center" href="../03/Clinic_System/index.html"><i data-lucide="external-link" class="w-4 h-4"></i>Open Clinic Web App</a></div>
+  </section>
+
+  <!-- Results matrix -->
+  <section aria-labelledby="matrix-h">
+    <div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+      <div><h2 id="matrix-h" class="text-xl font-semibold text-white">Test Results Matrix</h2>
+        <p class="muted text-sm" id="suite-desc"></p></div>
+      <div class="flex gap-2">
+        <label class="sr-only" for="q">Search tests</label><input id="q" type="search" placeholder="Search tests...">
+        <label class="sr-only" for="sf">Filter by status</label>
+        <select id="sf"><option value="">All statuses</option><option value="passed">PASSED</option><option value="failed">FAILED</option><option value="pending">NOT RUN</option></select>
+      </div>
+    </div>
+    <div role="tablist" aria-label="Test suites" class="flex flex-wrap gap-2 mb-4" id="tabs"></div>
+    <div id="list" class="space-y-2" role="tabpanel"></div>
+    <p id="empty" class="muted hidden text-center text-sm py-10">No tests match the current filter.</p>
+    <p class="muted text-xs mt-3" id="res-note"></p>
+  </section>
+
+  <!-- Run instructions -->
+  <section aria-labelledby="run-h">
+    <h2 id="run-h" class="text-xl font-semibold text-white mb-1">Run it yourself</h2>
+    <p class="muted text-sm mb-4">From the <code class="text-sky-300">homework/06</code> folder. E2E needs a one-time browser download.</p>
+    <div id="terms" class="grid gap-3 md:grid-cols-2"></div>
+  </section>
+
+  <section class="card p-5 text-sm muted" aria-label="How statuses work">
+    <p><b class="text-slate-200">About the statuses.</b> This page is static and cannot execute tests, so every case starts as <span class="pill s-pending">NOT RUN</span> rather than claiming a result.
+    To show real outcomes, run Vitest/Playwright locally and save a <code class="text-sky-300">results.json</code> next to this file in the form
+    <code class="text-sky-300">{"results":{"U5":{"status":"passed","ms":4}}}</code> using the IDs below; reload and the badges, times and counters update.
+    Cases marked <span class="pill s-pending">opt-in</span> only run when test-account credentials are configured.</p>
+  </section>
+</main>
+
+<footer class="max-w-6xl mx-auto px-5 pb-10 text-sm muted border-t pt-6" style="border-color:var(--line)">
+  <div class="flex flex-wrap gap-4">
+    <a class="underline hover:text-sky-300" href="https://github.com/vionylele/_se/tree/main/homework/06" target="_blank" rel="noopener">Source code</a>
+    <a class="underline hover:text-sky-300" href="https://github.com/vionylele/_se/blob/main/homework/06/README.md" target="_blank" rel="noopener">README</a>
+    <a class="underline hover:text-sky-300" href="../../index.html">Coursework Portal</a>
+  </div>
+</footer>
+
+<script>
+  // [id, group, title, assertions[], optional flag]
+  const SUITES = {
+    unit: { label: 'Unit Tests', icon: 'flask-conical', cmd: 'npm run test:unit', file: 'tests/unit/clinic-rules.test.ts',
+      desc: 'Vitest + fake timers. Runs the real scheduling rules extracted from app.js (no network).', rows: [
+      ['U1','Time-slot guard','Slot grid spans 08:00-20:30',['21 thirty-minute slots generated','First slot 08:00, last slot 20:30','Bookable slots (08:00, 11:30, 13:30, 16:30, 18:00, 20:30) return no error']],
+      ['U2','Time-slot guard','Lunch break 12:00-13:30 is blocked',['12:00, 12:30 and 13:00 return an error','None of them exist in SLOTS','13:30 is the first slot after lunch']],
+      ['U3','Time-slot guard','Dinner break 17:00-18:00 is blocked',['17:00 and 17:30 return an error','Neither exists in SLOTS','18:00 is the first slot after dinner']],
+      ['U4','Time-slot guard','Out-of-hours and off-grid times rejected',['07:30, 21:00, 23:30, 00:00 rejected','09:15 and 14:45 (not on the 30-min grid) rejected']],
+      ['U5','1-hour rule','59 minutes ahead is rejected',['Clock 10:31, slot 11:30 -> "at least 1 hour" error','Clock 10:30, slot 11:00 (30 min) also rejected']],
+      ['U6','1-hour rule','Exactly 60+ minutes ahead is accepted',['Clock 10:30, slot 11:30 -> no error','Clock 10:29 and 08:00->14:00 accepted']],
+      ['U7','1-hour rule','Past slots and past dates rejected',['Slot earlier today rejected','Yesterday\'s date rejected']],
+      ['U8','1-hour rule','Asia/Taipei time zone and rollovers',['00:30 UTC is treated as 08:30 Taipei','21:45 -> next-day 08:00 accepted','2026-12-31 -> 2027-01-01 handled']],
+      ['U9','1-hour rule','Admin exempt from lead time only',['Admin may book 30 min ahead','Admin still blocked in 12:30 and 17:00 breaks']],
+      ['U10','Role validator','Admin email resolves to ADMIN',['viony07@gmail.com -> ADMIN','Case-insensitive (Viony07@Gmail.com, VIONY07@GMAIL.COM)']],
+      ['U11','Role validator','Other emails resolve to PATIENT',['patient@example.com -> PATIENT','Look-alikes (viony08, xviony07, .com.tw, .co) and empty -> PATIENT']],
+      ['U12','Profile validator','Taiwan National ID / ARC checksum',['A123456789, F131104093, lower-case accepted','New-format (8/9) and old-format (A-D) ARC accepted','Bad checksum, wrong length, junk and SQL-like text rejected']],
+      ['U13','Profile validator','Required fields, DOB, phone, gender',['Each of 7 blank required fields rejected','Future DOB and 1990-02-31 rejected','Mobile, +886 and landline phones accepted; malformed rejected','Gender limited to Male / Female / Other']],
+      ['U14','Source contract','app.js and schema.sql stay consistent',['Admin expression in app.js unchanged','schema.sql is_admin() uses the same email','Cancellation reason >= 3 chars; required profile inputs present']],
+      ['U15','Security','HTML escaping helper (XSS guard)',['<img onerror> escaped','Quotes and ampersands escaped; null -> empty string']],
+    ]},
+    system: { label: 'System / API Tests', icon: 'server', cmd: 'npm run test:system', file: 'tests/system/supabase-api.test.ts',
+      desc: 'Vitest + Node fetch against the live Supabase REST (/rest/v1) and Auth APIs.', rows: [
+      ['S1','Supabase REST','GET /appointments with anon key returns 200',['HTTP 200','JSON array body','application/json content-type with order/limit params']],
+      ['S2','Row Level Security','Anonymous callers see no data',['GET /appointments -> []','GET /profiles -> [] (no PII leak)']],
+      ['S3','Auth headers','Missing API key is rejected',['No apikey header -> 401/403','Error body is not a data array']],
+      ['S4','Auth headers','Malformed key / tampered token rejected',['apikey "not-a-real-key" -> 401/403','Valid key + forged Bearer token -> 401/403']],
+      ['S5','Auth API','Wrong credentials refused',['POST /auth/v1/token -> 400/401/422','No access_token in response']],
+      ['S6','Data validation','Anonymous POST /appointments blocked',['Valid payload -> 401/403, never 2xx','No API key -> 401/403']],
+      ['S7','Data validation','Invalid payload still blocked',['Unknown department rejected with a 4xx']],
+      ['S8','Row Level Security','Anonymous PATCH / DELETE change nothing',['Forged cancellation rejected or 0 rows','DELETE rejected or 0 rows (records retained)']],
+      ['S9','Authenticated write','Valid booking accepted',['POST -> 201','Stored with status Scheduled'],'opt-in'],
+      ['S10','Authenticated write','Break slots rejected by DB trigger',['12:00 / 12:30 / 13:00 -> 400 "lunch"','17:00 / 17:30 -> 400 "dinner"'],'opt-in'],
+      ['S11','Authenticated write','Hours, grid and 1-hour rule enforced',['21:00 and 09:15 -> 400','Past date -> 400 "1 hour"'],'opt-in'],
+      ['S12','Authenticated write','Constraints enforced',['Department "Astrology" -> 400, code 23514','Missing chief_complaint -> 400, code 23502','Duplicate dept/date/time -> 409'],'opt-in'],
+      ['S13','Authenticated write','RLS blocks impersonation',['Other patient\'s patient_id -> 401/403','Row created as Cancelled -> 401/403'],'opt-in'],
+    ]},
+    e2e: { label: 'Playwright E2E Tests', icon: 'monitor-play', cmd: 'npm run test:e2e', file: 'tests/e2e/clinic-flow.spec.ts',
+      desc: 'Headless Chromium + Firefox against the real clinic app, with a simulated Supabase backend.', rows: [
+      ['E1','A - Patient journey','Patient logs in and sees patient navigation',['Book Appointment visible','Master Schedule menu absent']],
+      ['E2','A - Patient journey','Booking journey end to end',['Department + tomorrow -> 21 slots, zero break slots','Booked 10:00 slot disabled; 09:00 gets "selected"','Success toast; Upcoming (3) tab; card shows time, dept, Scheduled','POST body has correct patient, date, time, complaint']],
+      ['E3','A - Patient journey','Validation: no slot / bad password',['"Please select a time slot." and no request sent','"Invalid login credentials" and stays on login']],
+      ['E4','B - 1-hour rule','Clock 10:31: slots within the hour disabled',['08:00 to 11:30 disabled (11:30 = 59 min)','13:30 and 20:30 enabled']],
+      ['E5','B - 1-hour rule','Clock 10:30: boundary slot opens',['11:00 disabled','11:30 enabled (exactly 60 min)']],
+      ['E6','B - 1-hour rule','Tomorrow is fully bookable',['All 21 slots enabled at 19:45 today']],
+      ['E7','B - 1-hour rule','Tampering with the DOM is rejected',['Re-enabled 11:00 button -> "at least 1 hour" error','No POST sent; form stays open']],
+      ['E8','C - Admin audit','Master schedule sorted newest first',['5 rows, dates descending','First row +5 days, last row -3 days; Admin badge shown']],
+      ['E9','C - Admin audit','Cancellation requires a reason',['Empty reason blocked (:invalid), no PATCH','With reason: "Appointment cancelled." toast','Badge becomes Cancelled; reason shown; actions removed','PATCH has status, cancellation_reason, cancelled_by = admin']],
+      ['E10','C - Admin audit','Status filter on the master schedule',['"Completed" leaves exactly one row']],
+    ]},
+  };
+
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  const state = { tab: 'unit', q: '', status: '', results: null };
+  const statusOf = (id) => state.results?.[id]?.status ?? 'pending';
+  const LABEL = { passed: 'PASSED', failed: 'FAILED', pending: 'NOT RUN' };
+
+  function renderTabs() {
+    $('#tabs').innerHTML = Object.entries(SUITES).map(([k, s]) =>
+      `<button role="tab" class="tab inline-flex items-center gap-2" data-tab="${k}" aria-selected="${state.tab === k}"><i data-lucide="${s.icon}" class="w-4 h-4"></i>${esc(s.label)} <span class="muted font-normal">(${s.rows.length})</span></button>`).join('');
+  }
+
+  function renderList() {
+    const s = SUITES[state.tab], q = state.q.trim().toLowerCase();
+    $('#suite-desc').textContent = s.desc;
+    const rows = s.rows.filter(([id, g, t, a]) =>
+      (!state.status || statusOf(id) === state.status) &&
+      (!q || [id, g, t, ...a].join(' ').toLowerCase().includes(q)));
+    $('#empty').classList.toggle('hidden', rows.length > 0);
+    $('#list').innerHTML = rows.map(([id, group, title, asserts, flag]) => {
+      const st = statusOf(id), ms = state.results?.[id]?.ms;
+      return `<details class="row card"><summary class="p-4 flex flex-wrap items-center gap-3">
+        <i data-lucide="chevron-right" class="chev w-4 h-4 muted transition-transform"></i>
+        <span class="text-xs muted font-mono w-10">${esc(id)}</span>
+        <span class="flex-1 min-w-[12rem]"><span class="block font-medium text-slate-100">${esc(title)}</span><span class="block text-xs muted">${esc(group)}</span></span>
+        ${flag ? `<span class="pill s-pending">${esc(flag)}</span>` : ''}
+        <span class="text-xs muted tabular-nums w-16 text-right">${ms != null ? ms + ' ms' : '&ndash;'}</span>
+        <span class="pill s-${st}">${LABEL[st]}</span></summary>
+        <div class="px-4 pb-4 pl-[3.25rem] text-sm"><p class="text-xs muted mb-2">Assertions (${asserts.length})</p>
+          <ul class="space-y-1.5">${asserts.map((a) => `<li class="flex gap-2"><i data-lucide="check" class="w-4 h-4 mt-0.5 shrink-0 text-sky-400"></i><span>${esc(a)}</span></li>`).join('')}</ul>
+          <p class="text-xs muted mt-3">File: <code class="text-sky-300">${esc(s.file)}</code></p></div></details>`;
+    }).join('');
+    window.lucide?.createIcons();
+  }
+
+  function renderMetrics() {
+    const all = Object.values(SUITES).flatMap((s) => s.rows);
+    $('#m-cases').textContent = all.length; $('#m-total').textContent = all.length;
+    if (state.results) {
+      const p = all.filter(([id]) => statusOf(id) === 'passed').length, f = all.filter(([id]) => statusOf(id) === 'failed').length;
+      $('#m-pass').textContent = p; $('#m-pass-sub').textContent = f ? `${f} failed` : (p === all.length ? 'All listed cases passed' : 'Some cases not reported');
+    }
+  }
+
+  const TERMS = [
+    ['Install (once)', 'npm install && npx playwright install'],
+    ['Unit tests', 'npm run test:unit'],
+    ['System / API tests', 'npm run test:system'],
+    ['Playwright E2E tests', 'npm run test:e2e'],
+    ['Everything', 'npm run test:all'],
+  ];
+  function renderTerms() {
+    $('#terms').innerHTML = TERMS.map(([label, cmd], i) => `
+      <div class="term p-3 ${i === 4 ? 'md:col-span-2' : ''}"><div class="flex items-center justify-between mb-2">
+        <span class="text-xs muted">${esc(label)}</span>
+        <button class="btn !py-1 !px-2 text-xs" data-copy="${esc(cmd)}" aria-label="Copy command: ${esc(cmd)}"><i data-lucide="copy" class="w-3.5 h-3.5"></i><span>Copy</span></button></div>
+        <pre class="text-sm overflow-x-auto"><span class="text-emerald-400">$</span> ${esc(cmd)}</pre></div>`).join('');
+  }
+
+  async function copy(text) {
+    try { await navigator.clipboard.writeText(text); return true; }
+    catch { const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select();
+      let ok = false; try { ok = document.execCommand('copy'); } catch {} t.remove(); return ok; }
+  }
+
+  document.addEventListener('click', async (e) => {
+    const tab = e.target.closest('[data-tab]'); if (tab) { state.tab = tab.dataset.tab; renderTabs(); renderList(); window.lucide?.createIcons(); return; }
+    const btn = e.target.closest('[data-copy]'); if (!btn) return;
+    const ok = await copy(btn.dataset.copy), span = btn.querySelector('span');
+    span.textContent = ok ? 'Copied!' : 'Press Ctrl+C'; setTimeout(() => { span.textContent = 'Copy'; }, 1600);
+  });
+  $('#q').addEventListener('input', (e) => { state.q = e.target.value; renderList(); });
+  $('#sf').addEventListener('change', (e) => { state.status = e.target.value; renderList(); });
+
+  async function loadResults() {
+    try {
+      const r = await fetch('./results.json', { cache: 'no-store' });
+      if (!r.ok) return;
+      const j = await r.json(); state.results = j.results ?? null;
+      if (state.results) $('#res-note').textContent = 'Showing real results from results.json' + (j.updated ? ` (updated ${j.updated})` : '') + '.';
+    } catch { /* no results file: everything stays NOT RUN */ }
+  }
+
+  (async () => {
+    renderTabs(); renderTerms(); renderMetrics(); renderList(); window.lucide?.createIcons();
+    await loadResults();
+    if (state.results) { renderMetrics(); renderList(); }
+  })();
+</script>
+</body>
+</html>
