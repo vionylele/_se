@@ -39,7 +39,7 @@ Rules are enforced twice: in `app.js` (instant user feedback, greyed-out slots) 
 
 ## 3. RBAC Matrix
 
-| Capability | Admin (`viony07@gmail.com`) | Patient (any other email) |
+| Capability | Admin (`vionylee07@gmail.com`) | Patient (any other email) |
 |---|:---:|:---:|
 | Sign up / sign in / sign out | Yes | Yes |
 | View & edit own profile | Yes | Yes |
@@ -127,7 +127,7 @@ Also: a partial unique index prevents double booking, and `get_taken_slots(date,
 2. Go to **SQL Editor -> New query**.
 3. Paste the entire contents of `schema.sql` and click **Run**. It is idempotent and safe to re-run.
 4. Go to **Authentication -> Providers -> Email**. For quick testing, turn **"Confirm email" off**. If it stays on, new users must click the confirmation link before signing in.
-5. **Register `viony07@gmail.com` first** (before sharing the site), so nobody else can claim the admin address. Keep email confirmation on in production.
+5. **Register `vionylee07@gmail.com` first** (before sharing the site), so nobody else can claim the admin address. Keep email confirmation on in production.
 6. Verify under **Database -> Replication** that `appointments` is enabled for Realtime.
 
 > The anon key in `app.js` is a *public* key and is safe in the browser **because** RLS is enabled. Never put a `service_role` key in front-end code.
@@ -164,7 +164,7 @@ Use two isolated sessions: a normal window for the Admin and an **Incognito/Priv
 6. Try booking the same department/slot from a second patient account: the slot is disabled.
 
 **Admin tests (normal window)**
-1. Sign up / sign in as `viony07@gmail.com`: the header shows the **Admin** badge.
+1. Sign up / sign in as `vionylee07@gmail.com`: the header shows the **Admin** badge.
 2. **Dashboard**: registered patients, today's appointments, and cancellation rate update.
 3. **Master Schedule**: appointments are sorted newest first. Test search (name/email), date, department and status filters.
 4. Mark an appointment **Completed** and another **No-Show**; cancel one with a reason.
