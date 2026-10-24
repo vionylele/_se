@@ -4,6 +4,8 @@
 const SUPABASE_URL = 'https://xwchiameamzcwpbwyfea.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh3Y2hpYW1lYW16Y3dwYnd5ZmVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIxNTAyODYsImV4cCI6MjEwNzcyNjI4Nn0.KlwXGphzy6ptCfnniV2Lqm-sDgHfw0sv7NE_FqBlRTk';
 const ADMIN_EMAIL = 'vionylee07@gmail.com';
+// Canonical app URL (folder, no index.html) used as the email-confirmation redirect target
+const APP_URL = location.origin + location.pathname.replace(/index\.html$/, '');
 const DEPARTMENTS = ['General Medicine', 'Family Medicine', 'ENT', 'Pediatrics'];
 const STATUSES = ['Scheduled', 'Rescheduled', 'Completed', 'Cancelled', 'No-Show'];
 
@@ -133,6 +135,7 @@ function authView() {
         <div><label class="label" for="password">Password</label><input id="password" name="password" type="password" minlength="6" required class="input" autocomplete="${up ? 'new-password' : 'current-password'}"></div>
         ${up ? `<div><label class="label" for="password2">Confirm password</label><input id="password2" name="password2" type="password" minlength="6" required class="input"></div>` : ''}
         <button class="btn btn-primary w-full justify-center" type="submit">${up ? 'Create account' : 'Sign in'}</button>
+        ${up ? '' : `<button type="button" class="text-sm text-pine-700 underline w-full text-center" data-action="resend">Resend confirmation email</button>`}
         <p class="text-sm text-slate-600 text-center">${up ? 'Already registered?' : 'New patient?'}
           <button type="button" class="text-pine-700 font-semibold underline" data-action="toggle-auth">${up ? 'Sign in' : 'Create an account'}</button></p>
       </form>
@@ -335,6 +338,13 @@ document.addEventListener('click', async (e) => {
   if (act === 'close-modal-bg') { if (e.target === el) closeModal(); return; }
   if (act === 'close-modal') return closeModal();
   if (act === 'toggle-auth') { state.authMode = state.authMode === 'signin' ? 'signup' : 'signin'; return render(); }
+  if (act === 'resend') {
+    const email = ($('#email')?.value || '').trim();
+    if (!email) return toast('Enter your email address first, then click "Resend confirmation email".', 'error');
+    el.disabled = true; setTimeout(() => { el.disabled = false; }, 30000); // avoid hitting email rate limits
+    const { error } = await sb.auth.resend({ type: 'signup', email, options: { emailRedirectTo: APP_URL } });
+    return error ? toast(error.message, 'error') : toast('A new confirmation email has been sent. Open the newest email and click its link once.', 'success');
+  }
   if (act === 'signout') { await sb.auth.signOut(); return toast('You have been signed out.', 'success'); }
   if (act === 'nav') {
     if (el.dataset.view === 'book' && !state.profile?.full_name) { toast('Please complete your profile before booking.', 'error'); state.view = 'profile'; return render(); }
@@ -372,13 +382,13 @@ document.addEventListener('submit', async (e) => {
     if (kind === 'auth') {
       if (state.authMode === 'signup') {
         if (fd.password !== fd.password2) return toast('Passwords do not match.', 'error');
-        const { data, error } = await sb.auth.signUp({ email: fd.email.trim(), password: fd.password });
+        const { data, error } = await sb.auth.signUp({ email: fd.email.trim(), password: fd.password, options: { emailRedirectTo: APP_URL } });
         if (error) return toast(error.message, 'error');
         toast(data.session ? 'Account created. Welcome!' : 'Account created. Check your email to confirm, then sign in.', 'success');
         if (!data.session) { state.authMode = 'signin'; render(); }
       } else {
         const { error } = await sb.auth.signInWithPassword({ email: fd.email.trim(), password: fd.password });
-        if (error) return toast(error.message, 'error');
+        if (error) return toast(/not confirmed/i.test(error.message) ? 'Email not confirmed. Click "Resend confirmation email" below and use the newest link.' : error.message, 'error');
         toast('Signed in successfully.', 'success');
       }
     } else if (kind === 'profile') {
@@ -412,4 +422,12 @@ document.addEventListener('submit', async (e) => {
 (async () => {
   const { data } = await sb.auth.getSession();
   if (!data.session) render();
+  const hash = new URLSearchParams(location.hash.replace(/^#/, ''));
+  if (hash.get('error_code')) {
+    const expired = hash.get('error_code') === 'otp_expired';
+    toast(expired
+      ? 'This confirmation link is invalid or already used. If you already confirmed, just sign in; otherwise sign up again to get a new link.'
+      : (hash.get('error_description') || 'Authentication error.').replace(/\+/g, ' '), 'error');
+    history.replaceState(null, '', location.pathname);
+  }
 })();
