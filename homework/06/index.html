@@ -24,6 +24,7 @@
   .s-pending { color:var(--muted); border-color:var(--line); background:rgba(255,255,255,.03); }
   .term { background:#070b13; border:1px solid var(--line); border-radius:.6rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
   input, select { background:var(--card); border:1px solid var(--line); border-radius:.5rem; padding:.5rem .75rem; font-size:.875rem; color:var(--ink); }
+  .btn[disabled] { opacity:.45; cursor:not-allowed; }
   a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
   .row[open] summary .chev { transform:rotate(90deg); }
   summary { list-style:none; cursor:pointer; } summary::-webkit-details-marker { display:none; }
@@ -68,6 +69,11 @@
       </div>
     </div>
     <div role="tablist" aria-label="Test suites" class="flex flex-wrap gap-2 mb-4" id="tabs"></div>
+    <div class="flex flex-wrap items-center gap-2 mb-4">
+      <button id="run" class="btn btn-main"><i data-lucide="play" class="w-4 h-4"></i><span>Run in browser</span></button>
+      <a class="btn" href="https://github.com/vionylele/_se/actions/workflows/tests.yml" target="_blank" rel="noopener"><i data-lucide="github" class="w-4 h-4"></i>Run all on GitHub</a>
+      <span id="run-note" class="text-xs muted" role="status"></span>
+    </div>
     <div id="list" class="space-y-2" role="tabpanel"></div>
     <p id="empty" class="muted hidden text-center text-sm py-10">No tests match the current filter.</p>
     <p class="muted text-xs mt-3" id="res-note"></p>
@@ -177,7 +183,7 @@
         <span class="pill s-${st}">${LABEL[st]}</span></summary>
         <div class="px-4 pb-4 pl-[3.25rem] text-sm"><p class="text-xs muted mb-2">Assertions (${asserts.length})</p>
           <ul class="space-y-1.5">${asserts.map((a) => `<li class="flex gap-2"><i data-lucide="check" class="w-4 h-4 mt-0.5 shrink-0 text-sky-400"></i><span>${esc(a)}</span></li>`).join('')}</ul>
-          <p class="text-xs muted mt-3">File: <code class="text-sky-300">${esc(s.file)}</code></p></div></details>`;
+          ${state.results?.[id]?.err ? `<p class="mt-3 text-sm text-red-400 font-mono break-words">${esc(state.results[id].err)}</p>` : ''}<p class="text-xs muted mt-3">File: <code class="text-sky-300">${esc(s.file)}</code></p></div></details>`;
     }).join('');
     window.lucide?.createIcons();
   }
@@ -229,6 +235,93 @@
       if (state.results) $('#res-note').textContent = 'Showing real results from results.json' + (j.updated ? ` (updated ${j.updated})` : '') + '.';
     } catch { /* no results file: everything stays NOT RUN */ }
   }
+
+
+  /* ---------- In-browser runner (Unit + System/API) ---------- */
+  const BASE = '../03/Clinic_System/';
+  let SRC;
+  const eq = (a, b, m) => { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(`${m}: got ${JSON.stringify(a)}, expected ${JSON.stringify(b)}`); };
+  const ok = (c, m) => { if (!c) throw new Error(m); };
+  const BAD = [401, 403];
+  async function src() {
+    if (!SRC) { const [a, sql] = await Promise.all([BASE + 'app.js', BASE + 'schema.sql'].map((u) => fetch(u).then((r) => { if (!r.ok) throw new Error('Cannot load ' + u); return r.text(); })));
+      SRC = { a, sql, admin: a.match(/const ADMIN_EMAIL\s*=\s*'([^']+)'/)[1], url: a.match(/const SUPABASE_URL\s*=\s*'([^']+)'/)[1], key: a.match(/const SUPABASE_ANON_KEY\s*=\s*'([^']+)'/)[1] }; }
+    return SRC;
+  }
+  /* Evaluate the REAL rules block of app.js with a Date pinned to `iso` (Asia/Taipei wall clock). */
+  async function at(date, hhmm) {
+    const { a, admin } = await src(), RD = Date, iso = hhmm.includes('Z') ? hhmm : `${date}T${hhmm}:00+08:00`;
+    class FD extends RD { constructor(...x) { x.length ? super(...x) : super(iso); } static now() { return new RD(iso).getTime(); } }
+    const block = a.slice(a.indexOf('const SLOTS = [];'), a.indexOf('/* ------------------------------ UI helpers'));
+    const esc = a.split('\n').find((l) => l.startsWith('const esc ='));
+    return new Function('ADMIN_EMAIL', 'Date', `${esc}\n${block}\nreturn {SLOTS,fmt,toMin,taipeiNow,slotError,esc};`)(admin, FD);
+  }
+  const D = '2026-10-23', FAR = '2026-12-01';
+  const tooSoon = (e) => ok(/at least 1 hour/.test(e), 'expected the 1-hour error, got: ' + JSON.stringify(e));
+  const blocked = async (times, d = FAR) => { const r = await at(D, '10:30'); for (const t of times) { ok(r.slotError(d, r.toMin(t)) !== '', t + ' should be rejected'); ok(!r.SLOTS.includes(r.toMin(t)) || !['12:00','12:30','13:00','17:00','17:30'].includes(t), t + ' must not be a slot'); } };
+  const L = { A:10,B:11,C:12,D:13,E:14,F:15,G:16,H:17,I:34,J:18,K:19,L:20,M:21,N:22,O:35,P:23,Q:24,R:25,S:26,T:27,U:28,V:29,W:32,X:30,Y:31,Z:33 };
+  const idOk = (raw) => { const id = raw.trim().toUpperCase(); if (!/^[A-Z][1289A-D]\d{8}$/.test(id)) return false;
+    const c = L[id[0]], s2 = /[A-D]/.test(id[1]) ? L[id[1]] % 10 : +id[1];
+    return [c / 10 | 0, c % 10, s2, ...id.slice(2).split('').map(Number)].reduce((n, d, i) => n + d * [1,9,8,7,6,5,4,3,2,1,1][i], 0) % 10 === 0; };
+
+  const UNIT = {
+    U1: async () => { const r = await at(D, '10:30'); eq(r.SLOTS.length, 21, 'slot count'); eq([r.fmt(r.SLOTS[0]), r.fmt(r.SLOTS.at(-1))], ['08:00', '20:30'], 'first/last');
+      for (const t of ['08:00','11:30','13:30','16:30','18:00','20:30']) eq(r.slotError(FAR, r.toMin(t)), '', t); },
+    U2: async () => { await blocked(['12:00','12:30','13:00']); ok((await at(D,'10:30')).SLOTS.includes(810), '13:30 should be a slot'); },
+    U3: async () => { await blocked(['17:00','17:30']); ok((await at(D,'10:30')).SLOTS.includes(1080), '18:00 should be a slot'); },
+    U4: async () => blocked(['07:30','21:00','23:30','00:00','09:15','14:45']),
+    U5: async () => { tooSoon((await at(D,'10:31')).slotError(D, 690)); tooSoon((await at(D,'10:30')).slotError(D, 660)); },
+    U6: async () => { eq((await at(D,'10:30')).slotError(D, 690), '', '60 min'); eq((await at(D,'10:29')).slotError(D, 690), '', '61 min'); },
+    U7: async () => { tooSoon((await at(D,'15:00')).slotError(D, 540)); tooSoon((await at(D,'10:30')).slotError('2026-10-22', 840)); },
+    U8: async () => { const r = await at(null, '2026-10-24T00:30:00Z'); eq(r.taipeiNow(), { date: '2026-10-24', minutes: 510 }, 'Taipei now'); tooSoon(r.slotError('2026-10-24', 540));
+      eq((await at(D,'21:45')).slotError('2026-10-24', 480), '', 'cross-midnight'); eq((await at('2026-12-31','20:00')).slotError('2027-01-01', 480), '', 'year rollover'); },
+    U9: async () => { const r = await at(D,'10:30'); eq(r.slotError(D, 660, true), '', 'admin lead time'); ok(r.slotError(FAR, 750, true) !== '', 'admin 12:30'); ok(r.slotError(FAR, 1020, true) !== '', 'admin 17:00'); },
+    U10: async () => { const { admin } = await src(), role = (e) => e.toLowerCase() === admin ? 'ADMIN' : 'PATIENT'; eq(admin, 'viony07@gmail.com', 'admin email');
+      for (const e of ['viony07@gmail.com', 'Viony07@Gmail.com', 'VIONY07@GMAIL.COM']) eq(role(e), 'ADMIN', e); },
+    U11: async () => { const { admin } = await src(), role = (e) => e.toLowerCase() === admin ? 'ADMIN' : 'PATIENT';
+      for (const e of ['patient@example.com', 'viony08@gmail.com', 'xviony07@gmail.com', 'viony07@gmail.com.tw', '']) eq(role(e), 'PATIENT', e); },
+    U12: async () => { for (const i of ['A123456789', 'F131104093', 'a123456789']) ok(idOk(i), i + ' should be valid');
+      for (const i of ['A123456788', 'A12345678', 'A1234567890', '1123456789', 'A323456789', '', "A1' OR '1'='1"]) ok(!idOk(i), i + ' should be invalid'); },
+    U14: async () => { const { a, sql, admin } = await src();
+      ok(a.includes('state.isAdmin = session.user.email.toLowerCase() === ADMIN_EMAIL;'), 'admin expression changed'); ok(sql.includes(`= '${admin}'`), 'schema admin email differs');
+      ok(a.includes('reason.length < 3') && a.includes('id="c-reason" required minlength="3"'), 'cancel reason rule missing'); ok(a.includes('<select id="gender" name="gender" required'), 'gender select'); },
+    U15: async () => { const r = await at(D,'10:30'); eq(r.esc('<img onerror="x">'), '&lt;img onerror=&quot;x&quot;&gt;', 'markup'); eq(r.esc(`O'B & Co`), 'O&#39;B &amp; Co', 'quotes'); eq(r.esc(null), '', 'null'); },
+  };
+
+  const call = async (url, init) => { const r = await fetch(url, init); const t = await r.text(); let b = t; try { b = t ? JSON.parse(t) : null; } catch {} return { s: r.status, b }; };
+  const sys = async () => { const { url, key } = await src(), R = url + '/rest/v1', H = { apikey: key, Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' };
+    const row = (o = {}) => JSON.stringify({ patient_id: '00000000-0000-0000-0000-000000000001', appointment_date: '2030-01-07', appointment_time: '09:00', department: 'General Medicine', chief_complaint: 'browser test', notes: '', status: 'Scheduled', ...o });
+    return { url, key, R, H, row }; };
+  const SYSTEM = {
+    S1: async () => { const { R, H } = await sys(), r = await call(`${R}/appointments?select=*&limit=5`, { headers: H }); eq(r.s, 200, 'status'); ok(Array.isArray(r.b), 'body is not an array'); },
+    S2: async () => { const { R, H } = await sys(); for (const t of ['appointments', 'profiles']) { const r = await call(`${R}/${t}?select=*`, { headers: H }); eq(r.s, 200, t + ' status'); eq(r.b, [], t + ' rows visible to anon'); } },
+    S3: async () => { const { R } = await sys(), r = await call(`${R}/appointments?select=*`); ok(BAD.includes(r.s), 'status ' + r.s); ok(!Array.isArray(r.b), 'data leaked'); },
+    S4: async () => { const { R, key } = await sys(); let r = await call(`${R}/appointments?select=*`, { headers: { apikey: 'not-a-real-key' } }); ok(BAD.includes(r.s), 'bad key -> ' + r.s);
+      r = await call(`${R}/appointments?select=*`, { headers: { apikey: key, Authorization: 'Bearer eyJhbGciOiJIUzI1NiJ9.e30.invalidsignature' } }); ok(BAD.includes(r.s), 'tampered token -> ' + r.s); },
+    S5: async () => { const { url, key } = await src(), r = await call(`${url}/auth/v1/token?grant_type=password`, { method: 'POST', headers: { apikey: key, 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'nobody-qa@example.com', password: 'wrong-password-123' }) });
+      ok([400, 401, 422].includes(r.s), 'status ' + r.s); ok(!r.b?.access_token, 'token issued'); },
+    S6: async () => { const { R, H, row } = await sys(); let r = await call(`${R}/appointments`, { method: 'POST', headers: H, body: row() }); ok(BAD.includes(r.s), 'anon POST -> ' + r.s);
+      r = await call(`${R}/appointments`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: row() }); ok(BAD.includes(r.s), 'no-key POST -> ' + r.s); },
+    S7: async () => { const { R, H, row } = await sys(), r = await call(`${R}/appointments`, { method: 'POST', headers: H, body: row({ department: 'Astrology' }) }); ok(r.s >= 400 && r.s < 500, 'status ' + r.s); },
+    S8: async () => { const { R, H } = await sys(), h = { ...H, Prefer: 'return=representation' };
+      for (const [m, body] of [['PATCH', JSON.stringify({ status: 'Cancelled', cancellation_reason: 'forged', cancelled_by: 'admin' })], ['DELETE']]) {
+        const r = await call(`${R}/appointments?status=eq.Scheduled`, { method: m, headers: h, body }); if (r.s < 300) eq(r.b ?? [], [], m + ' touched rows'); else ok(BAD.includes(r.s), m + ' -> ' + r.s); } },
+  };
+
+  async function runSuite() {
+    const tab = state.tab, set = tab === 'unit' ? UNIT : tab === 'system' ? SYSTEM : null, note = $('#run-note');
+    if (!set) { note.textContent = 'Playwright E2E needs a real browser runner: use "Run all on GitHub".'; return; }
+    const btn = $('#run'); btn.disabled = true; state.results ??= {};
+    for (const [id, fn] of Object.entries(set)) {
+      note.textContent = `Running ${id}...`; const t0 = performance.now();
+      try { await fn(); state.results[id] = { status: 'passed', ms: Math.round(performance.now() - t0) }; }
+      catch (e) { state.results[id] = { status: 'failed', ms: Math.round(performance.now() - t0), err: e.message }; }
+    }
+    btn.disabled = false; const f = Object.keys(set).filter((id) => state.results[id].status === 'failed').length;
+    note.textContent = `${SUITES[tab].label}: ${Object.keys(set).length - f} passed, ${f} failed (run in this browser).`;
+    renderMetrics(); renderList();
+  }
+  $('#run').addEventListener('click', () => runSuite().catch((e) => { $('#run').disabled = false; $('#run-note').textContent = 'Runner error: ' + e.message; }));
 
   (async () => {
     renderTabs(); renderTerms(); renderMetrics(); renderList(); window.lucide?.createIcons();

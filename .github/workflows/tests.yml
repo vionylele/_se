@@ -1,0 +1,57 @@
+# Copy to <repo root>/.github/workflows/tests.yml
+# Runs Unit + System + E2E on GitHub, writes homework/06/results.json, redeploys Pages.
+name: Homework 06 Tests
+
+on:
+  workflow_dispatch:   # "Run workflow" button (the dashboard links here)
+
+permissions:
+  contents: write      # commit results.json
+  actions: write       # re-trigger deploy.yml
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: homework/06
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm install
+      - run: npx playwright install --with-deps chromium firefox
+      - run: mkdir -p out
+
+      - id: unit
+        continue-on-error: true
+        run: npx vitest run --config vitest.config.ts tests/unit --reporter=json --outputFile=out/unit.json
+      - id: system
+        continue-on-error: true
+        run: npx vitest run --config vitest.config.ts tests/system --reporter=json --outputFile=out/system.json
+      - id: e2e
+        continue-on-error: true
+        env:
+          CI: "true"
+          PLAYWRIGHT_JSON_OUTPUT_NAME: out/e2e.json
+        run: npx playwright test --reporter=json
+
+      - run: node scripts/build-results.mjs
+
+      - name: Commit results.json and redeploy Pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        working-directory: .
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add homework/06/results.json
+          if git diff --cached --quiet; then echo "no change"; else
+            git commit -m "chore: update homework 06 test results"
+            git pull --rebase origin main && git push
+            gh workflow run deploy.yml --ref main
+          fi
+
+      - name: Fail the run if any tier failed
+        if: steps.unit.outcome == 'failure' || steps.system.outcome == 'failure' || steps.e2e.outcome == 'failure'
+        run: exit 1

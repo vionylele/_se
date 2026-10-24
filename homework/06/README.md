@@ -58,7 +58,8 @@ homework/06/
 ├── .env.example                 # optional overrides / opt-in credentials
 ├── .gitignore
 ├── README.md
-├── index.html                   # static QA dashboard for GitHub Pages (optional results.json)
+├── index.html                   # QA dashboard for GitHub Pages (in-browser runner + results.json)
+├── scripts/build-results.mjs    # merges Vitest/Playwright JSON into results.json
 └── tests/
     ├── helpers/
     │   ├── app-source.ts        # locates and reads the app files
@@ -183,7 +184,12 @@ the schema has no DELETE policy), add a patient account's `TEST_PATIENT_EMAIL` /
 | **C** Admin queue | Master schedule + cancel | Admin badge/nav; 5 rows sorted newest first (first = +5 days, last = -3 days); empty reason blocked (`:invalid`, no PATCH); with reason -> "Appointment cancelled."; badge `Cancelled`; reason displayed; action buttons removed; PATCH has `status`, `cancellation_reason`, `cancelled_by: 'admin'` |
 | | Status filter | `Completed` shows exactly one row |
 
-## 7. Notes & Limitations
+## 7. Running Tests Without a Terminal
+
+* **Dashboard -> "Run in browser"** runs the Unit cases (U1-U12, U14, U15) and System/API cases (S1-S8) inside the page: it fetches the real `app.js` and calls the live Supabase API. E2E, U13 and the opt-in S9-S13 are not runnable this way.
+* **Dashboard -> "Run all on GitHub"** opens the Actions page. Copy `.github/workflows/tests.yml` to the repository root, press *Run workflow*; it runs all three tiers, commits `homework/06/results.json`, and re-triggers `deploy.yml` so the dashboard badges update.
+
+## 8. Notes & Limitations
 
 * E2E simulates the backend; the live backend is covered by the System tier. Pointing E2E at the real project would require dedicated test accounts and would write to production data.
 * The Playwright server uses `http-server` (a devDependency) so the ES module `app.js` loads over `http://`, not `file://`.
