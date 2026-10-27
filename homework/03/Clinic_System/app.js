@@ -126,6 +126,11 @@ sb.auth.onAuthStateChange((_e, session) => {
 });
 
 /* ------------------------------ Views ------------------------------ */
+function pwInput(id, autocomplete) {
+  return `<div class="relative"><input id="${id}" name="${id}" type="password" minlength="6" required class="input pr-11" autocomplete="${autocomplete}">
+    <button type="button" data-action="toggle-pw" data-target="${id}" class="absolute inset-y-0 right-0 px-3 text-slate-500 hover:text-pine-700" aria-label="Show password" title="Show password"><i data-lucide="eye" class="w-5 h-5"></i></button></div>`;
+}
+
 function authView() {
   const up = state.authMode === 'signup';
   return `<div class="min-h-screen grid md:grid-cols-2">
@@ -142,8 +147,8 @@ function authView() {
         <h2 class="text-2xl font-bold">${up ? 'Create your account' : 'Sign in'}</h2>
         ${up ? `<div><label class="label" for="full_name">Full name (account name)</label><input id="full_name" name="full_name" type="text" required minlength="2" class="input" autocomplete="name" placeholder="As shown on your National ID / ARC"></div>` : ''}
         <div><label class="label" for="email">Email</label><input id="email" name="email" type="email" required class="input" autocomplete="email"></div>
-        <div><label class="label" for="password">Password</label><input id="password" name="password" type="password" minlength="6" required class="input" autocomplete="${up ? 'new-password' : 'current-password'}"></div>
-        ${up ? `<div><label class="label" for="password2">Confirm password</label><input id="password2" name="password2" type="password" minlength="6" required class="input"></div>` : ''}
+        <div><label class="label" for="password">Password</label>${pwInput('password', up ? 'new-password' : 'current-password')}</div>
+        ${up ? `<div><label class="label" for="password2">Confirm password</label>${pwInput('password2', 'new-password')}</div>` : ''}
         <button class="btn btn-primary w-full justify-center" type="submit">${up ? 'Create account' : 'Sign in'}</button>
         ${up ? '' : `<button type="button" class="text-sm text-pine-700 underline w-full text-center" data-action="resend">Resend confirmation email</button>`}
         <p class="text-sm text-slate-600 text-center">${up ? 'Already registered?' : 'New patient?'}
@@ -348,6 +353,13 @@ document.addEventListener('click', async (e) => {
   if (act === 'close-modal-bg') { if (e.target === el) closeModal(); return; }
   if (act === 'close-modal') return closeModal();
   if (act === 'toggle-auth') { state.authMode = state.authMode === 'signin' ? 'signup' : 'signin'; return render(); }
+  if (act === 'toggle-pw') {
+    const input = $('#' + el.dataset.target); const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    el.setAttribute('aria-label', show ? 'Hide password' : 'Show password'); el.title = show ? 'Hide password' : 'Show password';
+    el.innerHTML = `<i data-lucide="${show ? 'eye-off' : 'eye'}" class="w-5 h-5"></i>`;
+    return window.lucide?.createIcons();
+  }
   if (act === 'resend') {
     const email = ($('#email')?.value || '').trim();
     if (!email) return toast('Enter your email address first, then click "Resend confirmation email".', 'error');
