@@ -8,7 +8,7 @@ create extension if not exists "pgcrypto";
 -- ---------- Helper: admin check (fixed admin email) ------------------
 create or replace function public.is_admin()
 returns boolean language sql stable as $$
-  select coalesce(auth.jwt() ->> 'email', '') = 'viony07@gmail.com';
+  select coalesce(auth.jwt() ->> 'email', '') = 'vionylee07@gmail.com';
 $$;
 
 -- ---------- Tables ----------------------------------------------------
@@ -70,7 +70,8 @@ create trigger trg_appts_touch before update on public.appointments
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  insert into public.profiles(id, email) values (new.id, new.email)
+  insert into public.profiles(id, email, full_name)
+  values (new.id, new.email, coalesce(new.raw_user_meta_data ->> 'full_name', ''))
   on conflict (id) do nothing;
   return new;
 end $$;
@@ -80,8 +81,16 @@ create trigger on_auth_user_created after insert on auth.users
   for each row execute function public.handle_new_user();
 
 -- Back-fill profiles for users that already exist
-insert into public.profiles(id, email)
-select id, email from auth.users on conflict (id) do nothing;
+insert into public.profiles(id, email, full_name)
+select id, email, coalesce(raw_user_meta_data ->> 'full_name', '') from auth.users
+on conflict (id) do nothing;
+
+-- Fill in missing names from sign-up metadata for profiles created earlier
+update public.profiles p
+set full_name = u.raw_user_meta_data ->> 'full_name'
+from auth.users u
+where u.id = p.id and coalesce(p.full_name, '') = ''
+  and coalesce(u.raw_user_meta_data ->> 'full_name', '') <> '';
 
 -- Server-side business rules (hours, breaks, 30-min grid, 1-hour lead time)
 create or replace function public.validate_appointment()

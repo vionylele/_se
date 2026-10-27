@@ -54,6 +54,8 @@ function toast(msg, type = 'info') {
   $('#toast-root').appendChild(el);
   setTimeout(() => el.remove(), 4500);
 }
+const profileComplete = (p) => !!(p && p.full_name && p.national_id && p.date_of_birth && p.gender && p.phone && p.emergency_contact && p.emergency_phone);
+const displayName = () => state.profile?.full_name?.trim() || state.session?.user?.user_metadata?.full_name || state.session?.user?.email || '';
 const badge = (s) => `<span class="badge b-${esc(s)}">${esc(s)}</span>`;
 const icon = (n, c = 'w-4 h-4') => `<i data-lucide="${n}" class="${c}"></i>`;
 const fmtDate = (d) => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
@@ -104,12 +106,19 @@ async function onSession(session) {
   }
   state.isAdmin = session.user.email.toLowerCase() === ADMIN_EMAIL;
   await loadProfile();
+  // Safety net: if the DB trigger did not copy the sign-up name, take it from the account metadata
+  const metaName = session.user.user_metadata?.full_name;
+  if (state.profile && !state.profile.full_name && metaName) {
+    const { data } = await sb.from('profiles').update({ full_name: metaName }).eq('id', session.user.id).select().maybeSingle();
+    if (data) state.profile = data;
+  }
   await loadAppts();
   if (state.isAdmin) { await loadPatients(); state.view = 'dashboard'; }
-  else state.view = state.profile?.full_name ? 'book' : 'profile';
+  else state.view = profileComplete(state.profile) ? 'book' : 'profile';
   subscribeRealtime();
   render();
-  if (!state.isAdmin && !state.profile?.full_name) toast('Welcome! Please complete your profile before booking.', 'info');
+  toast(`Welcome, ${displayName()}!`, 'success');
+  if (!state.isAdmin && !profileComplete(state.profile)) toast('Please complete your profile before booking.', 'info');
 }
 sb.auth.onAuthStateChange((_e, session) => {
   // Defer to avoid deadlocks inside the auth callback
@@ -131,6 +140,7 @@ function authView() {
     <div class="flex items-center justify-center p-6">
       <form data-form="auth" class="w-full max-w-sm space-y-4">
         <h2 class="text-2xl font-bold">${up ? 'Create your account' : 'Sign in'}</h2>
+        ${up ? `<div><label class="label" for="full_name">Full name (account name)</label><input id="full_name" name="full_name" type="text" required minlength="2" class="input" autocomplete="name" placeholder="As shown on your National ID / ARC"></div>` : ''}
         <div><label class="label" for="email">Email</label><input id="email" name="email" type="email" required class="input" autocomplete="email"></div>
         <div><label class="label" for="password">Password</label><input id="password" name="password" type="password" minlength="6" required class="input" autocomplete="${up ? 'new-password' : 'current-password'}"></div>
         ${up ? `<div><label class="label" for="password2">Confirm password</label><input id="password2" name="password2" type="password" minlength="6" required class="input"></div>` : ''}
@@ -150,7 +160,7 @@ function layout(inner) {
     <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-2 font-semibold">${icon('stethoscope', 'w-5 h-5')} Harbor Family Clinic</div>
       <div class="flex items-center gap-3 text-sm">
-        <span class="hidden sm:inline text-pine-100">${esc(state.session.user.email)}</span>
+        <span class="hidden sm:inline text-pine-100" title="${esc(state.session.user.email)}">${esc(displayName())}</span>
         <span class="badge ${state.isAdmin ? 'bg-amber-200 text-amber-900' : 'bg-pine-100 text-pine-800'}">${state.isAdmin ? 'Admin' : 'Patient'}</span>
         <button class="btn btn-ghost !py-1" data-action="signout">${icon('log-out')} Sign out</button>
       </div></div>
@@ -347,7 +357,7 @@ document.addEventListener('click', async (e) => {
   }
   if (act === 'signout') { await sb.auth.signOut(); return toast('You have been signed out.', 'success'); }
   if (act === 'nav') {
-    if (el.dataset.view === 'book' && !state.profile?.full_name) { toast('Please complete your profile before booking.', 'error'); state.view = 'profile'; return render(); }
+    if (el.dataset.view === 'book' && !profileComplete(state.profile)) { toast('Please complete your profile before booking.', 'error'); state.view = 'profile'; return render(); }
     state.view = el.dataset.view; return render();
   }
   if (act === 'tab') { state.tab = el.dataset.tab; return render(); }
@@ -381,15 +391,17 @@ document.addEventListener('submit', async (e) => {
   try {
     if (kind === 'auth') {
       if (state.authMode === 'signup') {
+        const fullName = (fd.full_name || '').trim();
+        if (fullName.length < 2) return toast('Please enter your full name.', 'error');
         if (fd.password !== fd.password2) return toast('Passwords do not match.', 'error');
-        const { data, error } = await sb.auth.signUp({ email: fd.email.trim(), password: fd.password, options: { emailRedirectTo: APP_URL } });
+        const { data, error } = await sb.auth.signUp({ email: fd.email.trim(), password: fd.password, options: { emailRedirectTo: APP_URL, data: { full_name: fullName } } });
         if (error) return toast(error.message, 'error');
         toast(data.session ? 'Account created. Welcome!' : 'Account created. Check your email to confirm, then sign in.', 'success');
         if (!data.session) { state.authMode = 'signin'; render(); }
       } else {
         const { error } = await sb.auth.signInWithPassword({ email: fd.email.trim(), password: fd.password });
         if (error) return toast(/not confirmed/i.test(error.message) ? 'Email not confirmed. Click "Resend confirmation email" below and use the newest link.' : error.message, 'error');
-        toast('Signed in successfully.', 'success');
+        /* welcome toast is shown by onSession */
       }
     } else if (kind === 'profile') {
       const { error } = await sb.from('profiles').update({ ...fd, date_of_birth: fd.date_of_birth || null, gender: fd.gender || null }).eq('id', state.session.user.id);
