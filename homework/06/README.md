@@ -11,9 +11,9 @@ lives in `homework/06/`.
 | Item | Value |
 |---|---|
 | Path | `homework/03/Clinic_System/` (`index.html`, `app.js`, `style.css`, `schema.sql`) |
-| App name in the UI | Harbor Family Clinic - Registration & Outpatient System |
+| App name in the UI | Lele Clinic - Registration & Outpatient System |
 | Stack | Vanilla JS (ES module), Tailwind CSS (CDN), Supabase (Auth + Postgres/PostgREST) |
-| Admin | `viony07@gmail.com` (any other account is a patient) |
+| Admin | `vionylee07@gmail.com` (any other account is a patient) |
 | Rules under test | Hours 08:00-21:00 (30-min slots, last 20:30); breaks 12:00-13:30 and 17:00-18:00; 1-hour lead time (admin exempt); mandatory cancellation reason |
 | Backend | `https://xwchiameamzcwpbwyfea.supabase.co/rest/v1/` - tables `profiles`, `appointments` |
 
@@ -128,8 +128,8 @@ the schema has no DELETE policy), add a patient account's `TEST_PATIENT_EMAIL` /
 | | 00:30 UTC = 08:30 Taipei | Time zone is Asia/Taipei, not UTC |
 | | Admin 30 min ahead | Admin bypasses lead time only |
 | | 2026-12-31 -> 2027-01-01 | Month/year rollover |
-| Roles | `viony07@gmail.com`, any case | `ADMIN` |
-| | other emails, look-alikes (`viony08`, `xviony07`, `.com.tw`, `.co`, empty) | `PATIENT` |
+| Roles | `vionylee07@gmail.com`, any case | `ADMIN` |
+| | other emails, the former admin `viony07@gmail.com`, look-alikes (`vionylee08`, `xvionylee07`, `.com.tw`, `.co`, empty) | `PATIENT` |
 | | Source contract | `app.js` admin expression, `schema.sql` admin email, cancellation reason >= 3 chars |
 | Profile validator | Valid National ID (`A123456789`, `F131104093`, lower-case) | Accepted |
 | | New-format ARC (8/9), old-format ARC (A-D) | Accepted with correct classification |

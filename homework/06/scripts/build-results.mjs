@@ -5,7 +5,7 @@ const MAP = {
   unit: { U1: /generates 21|accepts bookable|round-trip|no generated slot/, U2: /lunch break/, U3: /dinner break/,
     U4: /out-of-hours|30-minute grid/, U5: /rejects a slot (30|59)/, U6: /accepts a slot (exactly|61)/,
     U7: /already passed|dates in the past/, U8: /midnight|Asia\/Taipei|month\/year/, U9: /admin bypasses|break rules to the admin/,
-    U10: /declares viony07|identifies the admin|case-insensitive for the admin/, U11: /as PATIENT/, U12: /ID format/,
+    U10: /declares vionylee07|identifies the admin|case-insensitive for the admin/, U11: /as PATIENT/, U12: /ID format/,
     U13: /phone numbers|required patient fields/, U14: /source contract/i, U15: /HTML escaping/ },
   system: { S1: /returns HTTP 200|serves JSON/, S2: /Row Level Security.*anonymous callers/, S3: /NO api key|does not leak/,
     S4: /malformed api key|tampered Bearer/, S5: /Auth API refuses/, S6: /valid payload|without an api key/,

@@ -139,14 +139,14 @@ describe('1-hour advance-notice validation', () => {
 
 /* ------------------------------------------------------------------ */
 describe('Role & account validation', () => {
-  it('the app declares viony07@gmail.com as admin', () => expect(ADMIN_EMAIL).toBe('viony07@gmail.com'));
+  it('the app declares vionylee07@gmail.com as admin', () => expect(ADMIN_EMAIL).toBe('vionylee07@gmail.com'));
 
-  it('identifies the admin email as ADMIN', () => expect(getRole('viony07@gmail.com', ADMIN_EMAIL)).toBe('ADMIN'));
+  it('identifies the admin email as ADMIN', () => expect(getRole('vionylee07@gmail.com', ADMIN_EMAIL)).toBe('ADMIN'));
   it('is case-insensitive for the admin email', () => {
-    expect(getRole('Viony07@Gmail.com', ADMIN_EMAIL)).toBe('ADMIN');
-    expect(getRole('VIONY07@GMAIL.COM', ADMIN_EMAIL)).toBe('ADMIN');
+    expect(getRole('Vionylee07@Gmail.com', ADMIN_EMAIL)).toBe('ADMIN');
+    expect(getRole('VIONYLEE07@GMAIL.COM', ADMIN_EMAIL)).toBe('ADMIN');
   });
-  it.each(['patient@example.com', 'viony08@gmail.com', 'xviony07@gmail.com', 'viony07@gmail.com.tw', 'viony07@gmail.co', ''])(
+  it.each(['patient@example.com', 'viony07@gmail.com', 'vionylee08@gmail.com', 'xvionylee07@gmail.com', 'vionylee07@gmail.com.tw', 'vionylee07@gmail.co', ''])(
     'identifies %j as PATIENT', (email) => expect(getRole(email, ADMIN_EMAIL)).toBe('PATIENT'));
 
   describe('source contract (fails if app.js / schema.sql drift from the helper)', () => {

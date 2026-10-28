@@ -116,8 +116,8 @@
       ['U7','1-hour rule','Past slots and past dates rejected',['Slot earlier today rejected','Yesterday\'s date rejected']],
       ['U8','1-hour rule','Asia/Taipei time zone and rollovers',['00:30 UTC is treated as 08:30 Taipei','21:45 -> next-day 08:00 accepted','2026-12-31 -> 2027-01-01 handled']],
       ['U9','1-hour rule','Admin exempt from lead time only',['Admin may book 30 min ahead','Admin still blocked in 12:30 and 17:00 breaks']],
-      ['U10','Role validator','Admin email resolves to ADMIN',['viony07@gmail.com -> ADMIN','Case-insensitive (Viony07@Gmail.com, VIONY07@GMAIL.COM)']],
-      ['U11','Role validator','Other emails resolve to PATIENT',['patient@example.com -> PATIENT','Look-alikes (viony08, xviony07, .com.tw, .co) and empty -> PATIENT']],
+      ['U10','Role validator','Admin email resolves to ADMIN',['vionylee07@gmail.com -> ADMIN','Case-insensitive (Vionylee07@Gmail.com, VIONYLEE07@GMAIL.COM)']],
+      ['U11','Role validator','Other emails resolve to PATIENT',['patient@example.com -> PATIENT','Former admin viony07, look-alikes (vionylee08, xvionylee07, .com.tw, .co) and empty -> PATIENT']],
       ['U12','Profile validator','Taiwan National ID / ARC checksum',['A123456789, F131104093, lower-case accepted','New-format (8/9) and old-format (A-D) ARC accepted','Bad checksum, wrong length, junk and SQL-like text rejected']],
       ['U13','Profile validator','Required fields, DOB, phone, gender',['Each of 7 blank required fields rejected','Future DOB and 1990-02-31 rejected','Mobile, +886 and landline phones accepted; malformed rejected','Gender limited to Male / Female / Other']],
       ['U14','Source contract','app.js and schema.sql stay consistent',['Admin expression in app.js unchanged','schema.sql is_admin() uses the same email','Cancellation reason >= 3 chars; required profile inputs present']],
@@ -276,10 +276,10 @@
     U8: async () => { const r = await at(null, '2026-10-24T00:30:00Z'); eq(r.taipeiNow(), { date: '2026-10-24', minutes: 510 }, 'Taipei now'); tooSoon(r.slotError('2026-10-24', 540));
       eq((await at(D,'21:45')).slotError('2026-10-24', 480), '', 'cross-midnight'); eq((await at('2026-12-31','20:00')).slotError('2027-01-01', 480), '', 'year rollover'); },
     U9: async () => { const r = await at(D,'10:30'); eq(r.slotError(D, 660, true), '', 'admin lead time'); ok(r.slotError(FAR, 750, true) !== '', 'admin 12:30'); ok(r.slotError(FAR, 1020, true) !== '', 'admin 17:00'); },
-    U10: async () => { const { admin } = await src(), role = (e) => e.toLowerCase() === admin ? 'ADMIN' : 'PATIENT'; eq(admin, 'viony07@gmail.com', 'admin email');
-      for (const e of ['viony07@gmail.com', 'Viony07@Gmail.com', 'VIONY07@GMAIL.COM']) eq(role(e), 'ADMIN', e); },
+    U10: async () => { const { admin } = await src(), role = (e) => e.toLowerCase() === admin ? 'ADMIN' : 'PATIENT'; eq(admin, 'vionylee07@gmail.com', 'admin email');
+      for (const e of ['vionylee07@gmail.com', 'Vionylee07@Gmail.com', 'VIONYLEE07@GMAIL.COM']) eq(role(e), 'ADMIN', e); },
     U11: async () => { const { admin } = await src(), role = (e) => e.toLowerCase() === admin ? 'ADMIN' : 'PATIENT';
-      for (const e of ['patient@example.com', 'viony08@gmail.com', 'xviony07@gmail.com', 'viony07@gmail.com.tw', '']) eq(role(e), 'PATIENT', e); },
+      for (const e of ['patient@example.com', 'viony07@gmail.com', 'vionylee08@gmail.com', 'xvionylee07@gmail.com', 'vionylee07@gmail.com.tw', '']) eq(role(e), 'PATIENT', e); },
     U12: async () => { for (const i of ['A123456789', 'F131104093', 'a123456789']) ok(idOk(i), i + ' should be valid');
       for (const i of ['A123456788', 'A12345678', 'A1234567890', '1123456789', 'A323456789', '', "A1' OR '1'='1"]) ok(!idOk(i), i + ' should be invalid'); },
     U14: async () => { const { a, sql, admin } = await src();

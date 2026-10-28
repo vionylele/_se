@@ -15,7 +15,7 @@ const SUPABASE_HOST = /^https:\/\/xwchiameamzcwpbwyfea\.supabase\.co\/(auth|rest
 
 export const PATIENT = { id: '11111111-1111-4111-8111-111111111111', email: 'patient@example.com', password: 'Passw0rd!', name: 'Chen Wei-Ming' };
 export const OTHER = { id: '33333333-3333-4333-8333-333333333333', email: 'other@example.com', password: 'Passw0rd!', name: 'Lin Mei-Hua' };
-export const ADMIN = { id: '22222222-2222-4222-8222-222222222222', email: 'viony07@gmail.com', password: 'AdminPass1!', name: '' };
+export const ADMIN = { id: '22222222-2222-4222-8222-222222222222', email: 'vionylee07@gmail.com', password: 'AdminPass1!', name: '' };
 
 /** Calendar date (YYYY-MM-DD) in Asia/Taipei, `offsetDays` from `from`. */
 export function taipeiDate(offsetDays = 0, from = new Date()): string {
