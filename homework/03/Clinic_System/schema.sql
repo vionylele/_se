@@ -1,5 +1,5 @@
 -- =====================================================================
--- Clinic System - Supabase migration (run once in SQL Editor)
+-- Lele Clinic - Supabase migration (run once in SQL Editor)
 -- Architected and generated with assistance from Claude (Anthropic)
 -- =====================================================================
 
@@ -174,3 +174,7 @@ alter table public.appointments replica identity full;
 do $$ begin
   alter publication supabase_realtime add table public.appointments;
 exception when duplicate_object then null; end $$;
+
+-- ---------- Documentation comments -----------------------------------
+comment on table public.profiles     is 'Lele Clinic patient and admin profiles (one row per auth user).';
+comment on table public.appointments is 'Lele Clinic outpatient appointments.';

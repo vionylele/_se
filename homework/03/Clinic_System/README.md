@@ -1,4 +1,4 @@
-# Harbor Family Clinic - Medical Registration & Outpatient System
+# Lele Clinic - Medical Registration & Outpatient System
 
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?logo=html5&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?logo=tailwindcss&logoColor=white)
@@ -17,7 +17,7 @@ Small general clinics in Taiwan often rely on walk-in queues, phone calls, or pa
 
 This web app provides:
 
-- **Patients:** self-service sign-up, profile management, booking, rescheduling and cancelling visits.
+- **Patients:** self-service sign-up (with account full name), profile management, booking, rescheduling and cancelling visits.
 - **Clinic staff (Admin):** live dashboard, a master schedule with search and filters, status management (Completed / No-Show), and a patient directory with full visit history.
 
 **Commercial value:** it requires no server (static hosting + Supabase free tier), reduces no-shows and front-desk phone traffic, and enforces clinic scheduling rules automatically in both the browser and the database.
@@ -51,7 +51,7 @@ Rules are enforced twice: in `app.js` (instant user feedback, greyed-out slots) 
 | View all appointments (Master Schedule) | **Yes** | No |
 | Search & filter by name, date, department, status | **Yes** | No |
 | Cancel any appointment (reason required) | **Yes** | No |
-| Mark appointments Completed / No-Show | **Yes** | No |
+| Change any appointment's status (Scheduled, Rescheduled, Completed, Cancelled, No-Show) | **Yes** | No |
 | Dashboard metrics | **Yes** | No |
 | Patient directory + consultation history | **Yes** | No |
 
@@ -144,12 +144,16 @@ python3 -m http.server 8000      # or: npx serve .
 
 ### 6.3 Deploy to GitHub Pages
 
-1. Commit `_se/homework/03/Clinic_System/` to your repository's `main` branch.
-2. **Important:** GitHub Pages' Jekyll build ignores any folder starting with `_`. Add an empty file named `.nojekyll` at the **repository root** and commit it.
-3. In GitHub: **Settings -> Pages -> Build and deployment -> Source: Deploy from a branch -> Branch: `main` / `(root)` -> Save**.
-4. After a minute or two the site is live at:
+**Option 1 - Deploy from a branch:** commit `_se/homework/03/Clinic_System/` to `main`, add an empty `.nojekyll` file at the **repository root** (Jekyll ignores folders starting with `_`), then **Settings -> Pages -> Source: Deploy from a branch -> `main` / `(root)`**.
+
+**Option 2 - GitHub Actions (when the repository already uses a Pages workflow):** set **Settings -> Pages -> Source: GitHub Actions**. A repository can only have one Pages deployment, so do **not** add a second Pages workflow. Make sure your existing workflow uploads a path that contains `_se/homework/03/Clinic_System/` (for example `path: .` with `actions/upload-pages-artifact`, which does not run Jekyll, so `.nojekyll` is not needed). Each push to `main` redeploys the whole site, including this app.
+
+After the deployment finishes (check the **Actions** tab) the site is live at:
    `https://<your-username>.github.io/<repo-name>/_se/homework/03/Clinic_System/index.html`
-5. In Supabase, open **Authentication -> URL Configuration** and add that URL as a Site URL / Redirect URL so confirmation emails return to the app.
+Then, in Supabase, open **Authentication -> URL Configuration**:
+   - **Site URL:** `https://<your-username>.github.io/<repo-name>/_se/homework/03/Clinic_System/` (must point at the folder that contains `index.html`, not a parent folder, or confirmation links end in a 404).
+   - **Redirect URLs:** add `https://<your-username>.github.io/<repo-name>/_se/homework/03/Clinic_System/**`.
+   - If a confirmation link shows `otp_expired`, it was already used (often by an email scanner). Try signing in; if that fails, delete the user under **Authentication -> Users** and sign up again, or temporarily disable "Confirm email".
 
 ## 7. Testing & Verification Guide
 
@@ -174,7 +178,14 @@ Use two isolated sessions: a normal window for the Admin and an **Incognito/Priv
 
 **Security check:** as a patient, open the browser console and try `select * from appointments` through the client. Only your own rows are returned. Calling an insert with a time inside a break window is rejected by the database trigger.
 
-## 8. Limitations & Ideas
+## 8. Behaviour Notes
+
+- **Account name:** the sign-up form asks for a full name, stored in the Supabase account metadata and copied to `profiles.full_name` by the `handle_new_user` trigger. The name is shown in the header after login.
+- **Form drafts:** the booking and profile forms are saved automatically in the browser (`localStorage`, per user), so switching tabs, minimising or reloading does not lose what was typed. Drafts are cleared after a successful submit.
+- **Admin status editing:** in Master Schedule, **Change status** lets the Admin set any appointment to Scheduled, Rescheduled, Completed, Cancelled or No-Show (a reason is required for Cancelled).
+- **Branding:** the clinic is called **Lele Clinic**. For confirmation emails, also update the sender name and templates in Supabase (Authentication -> Email Templates / SMTP Settings).
+
+## 9. Limitations & Ideas
 
 - Capacity is one appointment per department per slot; multi-doctor scheduling would need a `doctors` table.
 - Email/SMS reminders could be added with Supabase Edge Functions.

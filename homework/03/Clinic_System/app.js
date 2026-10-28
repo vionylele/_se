@@ -120,9 +120,14 @@ async function onSession(session) {
   toast(`Welcome, ${displayName()}!`, 'success');
   if (!state.isAdmin && !profileComplete(state.profile)) toast('Please complete your profile before booking.', 'info');
 }
-sb.auth.onAuthStateChange((_e, session) => {
+sb.auth.onAuthStateChange((event, session) => {
   // Defer to avoid deadlocks inside the auth callback
-  setTimeout(() => onSession(session), 0);
+  setTimeout(() => {
+    const sameUser = session && state.session && session.user.id === state.session.user.id;
+    // Supabase re-fires SIGNED_IN / TOKEN_REFRESHED when the tab regains focus; re-rendering then would wipe open forms.
+    if (sameUser && event !== 'SIGNED_OUT') { state.session = session; return; }
+    onSession(session);
+  }, 0);
 });
 
 /* ------------------------------ Views ------------------------------ */
@@ -135,7 +140,7 @@ function authView() {
   const up = state.authMode === 'signup';
   return `<div class="min-h-screen grid md:grid-cols-2">
     <div class="hidden md:flex flex-col justify-between bg-pine-900 text-pine-50 p-12">
-      <div class="flex items-center gap-2 text-lg font-semibold">${icon('stethoscope', 'w-6 h-6')} Harbor Family Clinic</div>
+      <div class="flex items-center gap-2 text-lg font-semibold">${icon('stethoscope', 'w-6 h-6')} Lele Clinic</div>
       <div>
         <h1 class="text-4xl font-bold leading-tight mb-4">See a doctor without the waiting room queue.</h1>
         <p class="text-pine-100/80 max-w-md">Book, reschedule, or cancel outpatient visits online. Open daily 08:00-21:00, with breaks 12:00-13:30 and 17:00-18:00.</p>
@@ -163,7 +168,7 @@ function layout(inner) {
     : [['book', 'Book Appointment', 'calendar-plus'], ['appointments', 'My Appointments', 'clipboard-list'], ['profile', 'My Profile', 'user-round']];
   return `<header class="bg-pine-900 text-white">
     <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
-      <div class="flex items-center gap-2 font-semibold">${icon('stethoscope', 'w-5 h-5')} Harbor Family Clinic</div>
+      <div class="flex items-center gap-2 font-semibold">${icon('stethoscope', 'w-5 h-5')} Lele Clinic</div>
       <div class="flex items-center gap-3 text-sm">
         <span class="hidden sm:inline text-pine-100" title="${esc(state.session.user.email)}">${esc(displayName())}</span>
         <span class="badge ${state.isAdmin ? 'bg-amber-200 text-amber-900' : 'bg-pine-100 text-pine-800'}">${state.isAdmin ? 'Admin' : 'Patient'}</span>
@@ -263,9 +268,9 @@ function scheduleTable(rows, compact = false) {
       <td class="pr-3">${esc(a.profiles?.full_name || '(no name)')}<br><span class="text-xs text-slate-500">${esc(a.profiles?.email)}</span></td>
       <td class="pr-3">${esc(a.department)}</td><td class="pr-3 max-w-[14rem]">${esc(a.chief_complaint)}${a.cancellation_reason ? `<br><span class="text-xs text-red-700">Cancelled: ${esc(a.cancellation_reason)}</span>` : ''}</td>
       <td class="pr-3">${badge(a.status)}</td>
-      ${compact ? '' : `<td><div class="flex flex-wrap gap-1">${active ? `<button class="btn btn-ghost !py-1 !px-2" data-action="set-status" data-id="${a.id}" data-status="Completed">Completed</button>
+      ${compact ? '' : `<td><div class="flex flex-wrap gap-1"><button class="btn btn-ghost !py-1 !px-2" data-action="edit-status" data-id="${a.id}">${icon('pencil', 'w-3.5 h-3.5')} Change status</button>${active ? `<button class="btn btn-ghost !py-1 !px-2" data-action="set-status" data-id="${a.id}" data-status="Completed">Completed</button>
         <button class="btn btn-ghost !py-1 !px-2" data-action="set-status" data-id="${a.id}" data-status="No-Show">No-Show</button>
-        <button class="btn btn-danger !py-1 !px-2" data-action="cancel" data-id="${a.id}">Cancel</button>` : '<span class="text-slate-400">-</span>'}</div></td>`}</tr>`;
+        <button class="btn btn-danger !py-1 !px-2" data-action="cancel" data-id="${a.id}">Cancel</button>` : ''}</div></td>`}</tr>`;
     }).join('')}</tbody></table></div>`;
 }
 
@@ -302,6 +307,32 @@ function render() {
     app.innerHTML = layout(views[state.view]());
   }
   window.lucide?.createIcons();
+  if (state.session) restoreDrafts();
+}
+
+/* ------------------------------ Form drafts ------------------------------ */
+const DRAFT_FORMS = ['book', 'profile'];
+const draftKey = (name) => `lele_clinic_draft:${state.session?.user?.id}:${name}`;
+function saveDraft(form) {
+  try { localStorage.setItem(draftKey(form.dataset.form), JSON.stringify(Object.fromEntries(new FormData(form)))); } catch { /* storage unavailable */ }
+}
+function clearDraft(name) { try { localStorage.removeItem(draftKey(name)); } catch { /* ignore */ } }
+async function restoreDrafts() {
+  for (const name of DRAFT_FORMS) {
+    const form = document.querySelector(`form[data-form="${name}"]`); if (!form) continue;
+    let d; try { d = JSON.parse(localStorage.getItem(draftKey(name)) || 'null'); } catch { d = null; }
+    if (!d) continue;
+    for (const [k, v] of Object.entries(d)) {
+      const el = form.elements[k]; if (!el || k === 'time') continue;
+      if (k === 'date' && v < taipeiNow().date) continue; // skip dates that are already in the past
+      el.value = v;
+    }
+    if (name === 'book' && d.department && d.date && d.date >= taipeiNow().date) {
+      await loadSlots('book-slots', d.date, d.department, 'b-time');
+      const btn = d.time && form.querySelector(`.slot[data-time="${d.time}"]:not([disabled])`);
+      if (btn) { $('#b-time').value = d.time; btn.classList.add('selected'); }
+    }
+  }
 }
 
 /* ------------------------------ Slot picker ------------------------------ */
@@ -333,6 +364,13 @@ function cancelModal(a) {
     <p class="text-sm text-slate-600">${esc(a.department)} on ${a.appointment_date} at ${a.appointment_time.slice(0, 5)}</p>
     <div><label class="label" for="c-reason">Cancellation reason (required)</label><textarea id="c-reason" required minlength="3" rows="3" class="input"></textarea></div>
     <div class="flex justify-end gap-2"><button type="button" class="btn btn-ghost" data-action="close-modal">Keep appointment</button><button class="btn btn-danger" type="submit">Cancel appointment</button></div></form>`);
+}
+function statusModal(a) {
+  openModal(`<form data-form="status" data-id="${a.id}" class="space-y-4"><h3 class="text-lg font-bold">Change appointment status</h3>
+    <p class="text-sm text-slate-600">${esc(a.profiles?.full_name || a.profiles?.email || '')} - ${esc(a.department)} on ${a.appointment_date} at ${a.appointment_time.slice(0, 5)}<br>Current status: ${badge(a.status)}</p>
+    <div><label class="label" for="s-status">New status</label><select id="s-status" class="input">${STATUSES.map((s) => `<option ${s === a.status ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+    <div id="s-reason-wrap" class="${a.status === 'Cancelled' ? '' : 'hidden'}"><label class="label" for="s-reason">Cancellation reason (required)</label><textarea id="s-reason" rows="3" class="input">${esc(a.cancellation_reason || '')}</textarea></div>
+    <div class="flex justify-end gap-2"><button type="button" class="btn btn-ghost" data-action="close-modal">Close</button><button class="btn btn-primary" type="submit">Save status</button></div></form>`);
 }
 function patientModal(p) {
   const hist = state.appts.filter((a) => a.patient_id === p.id);
@@ -375,10 +413,13 @@ document.addEventListener('click', async (e) => {
   if (act === 'tab') { state.tab = el.dataset.tab; return render(); }
   if (act === 'pick-slot') {
     $('#' + el.dataset.input).value = el.dataset.time;
-    el.parentElement.querySelectorAll('.slot').forEach((b) => b.classList.toggle('selected', b === el)); return;
+    el.parentElement.querySelectorAll('.slot').forEach((b) => b.classList.toggle('selected', b === el));
+    const f = el.closest('form[data-form]'); if (f && DRAFT_FORMS.includes(f.dataset.form)) saveDraft(f);
+    return;
   }
   if (act === 'reschedule') return rescheduleModal(appt());
   if (act === 'cancel') return cancelModal(appt());
+  if (act === 'edit-status') return statusModal(appt());
   if (act === 'patient-detail') return patientModal(state.patients.find((p) => p.id === id));
   if (act === 'set-status') {
     const { error } = await sb.from('appointments').update({ status: el.dataset.status }).eq('id', id);
@@ -387,8 +428,13 @@ document.addEventListener('click', async (e) => {
   }
 });
 
+const autosave = (e) => { const f = e.target.closest?.('form[data-form]'); if (f && DRAFT_FORMS.includes(f.dataset.form)) saveDraft(f); };
+document.addEventListener('input', autosave);
+document.addEventListener('change', autosave);
+
 document.addEventListener('change', (e) => {
-  if (e.target.matches('[data-slot-source]')) loadSlots('book-slots', $('#b-date').value, $('#b-dept').value, 'b-time');
+  if (e.target.matches('[data-slot-source]')) loadSlots('book-slots', $('#b-date').value, $('#b-dept').value, 'b-time').then(() => saveDraft(e.target.closest('form')));
+  if (e.target.id === 's-status') $('#s-reason-wrap').classList.toggle('hidden', e.target.value !== 'Cancelled');
   if (e.target.matches('select[data-filter]')) { state.filters[e.target.dataset.filter] = e.target.value; $('#sched-body').innerHTML = scheduleTable(filteredAppts()); window.lucide?.createIcons(); }
 });
 document.addEventListener('input', (e) => {
@@ -418,13 +464,13 @@ document.addEventListener('submit', async (e) => {
     } else if (kind === 'profile') {
       const { error } = await sb.from('profiles').update({ ...fd, date_of_birth: fd.date_of_birth || null, gender: fd.gender || null }).eq('id', state.session.user.id);
       if (error) return toast(error.message, 'error');
-      await loadProfile(); toast('Profile saved.', 'success'); render();
+      clearDraft('profile'); await loadProfile(); toast('Profile saved.', 'success'); render();
     } else if (kind === 'book') {
       if (!fd.time) return toast('Please select a time slot.', 'error');
       const err = slotError(fd.date, toMin(fd.time)); if (err) return toast(err, 'error');
       const { error } = await sb.from('appointments').insert({ patient_id: state.session.user.id, appointment_date: fd.date, appointment_time: fd.time, department: fd.department, chief_complaint: fd.complaint.trim(), notes: fd.notes.trim(), status: 'Scheduled' });
       if (error) return toast(error.code === '23505' ? 'That slot was just taken. Please pick another time.' : error.message, 'error');
-      toast('Appointment booked successfully.', 'success'); await loadAppts(); state.view = 'appointments'; state.tab = 'upcoming'; render();
+      clearDraft('book'); toast('Appointment booked successfully.', 'success'); await loadAppts(); state.view = 'appointments'; state.tab = 'upcoming'; render();
     } else if (kind === 'reschedule') {
       const date = $('#r-date').value, time = $('#r-time').value;
       if (!time) return toast('Please select a new time slot.', 'error');
@@ -433,6 +479,13 @@ document.addEventListener('submit', async (e) => {
       const { error } = await sb.from('appointments').update({ appointment_date: date, appointment_time: time, status: 'Rescheduled', reschedule_count: a.reschedule_count + 1 }).eq('id', a.id);
       if (error) return toast(error.code === '23505' ? 'That slot was just taken. Please pick another time.' : error.message, 'error');
       closeModal(); toast('Appointment rescheduled.', 'success'); await loadAppts(); render();
+    } else if (kind === 'status') {
+      const status = $('#s-status').value; const reason = $('#s-reason').value.trim();
+      if (status === 'Cancelled' && reason.length < 3) return toast('A cancellation reason is required when cancelling.', 'error');
+      const patch = status === 'Cancelled' ? { status, cancellation_reason: reason, cancelled_by: 'admin' } : { status, cancellation_reason: null, cancelled_by: null };
+      const { error } = await sb.from('appointments').update(patch).eq('id', form.dataset.id);
+      if (error) return toast(error.code === '23505' ? 'Another active appointment already uses this slot, so it cannot be set back to Scheduled/Rescheduled.' : error.message, 'error');
+      closeModal(); toast(`Status changed to ${status}.`, 'success'); await loadAppts(); render();
     } else if (kind === 'cancel') {
       const reason = $('#c-reason').value.trim(); if (reason.length < 3) return toast('A cancellation reason is required.', 'error');
       const { error } = await sb.from('appointments').update({ status: 'Cancelled', cancellation_reason: reason, cancelled_by: state.isAdmin ? 'admin' : 'patient' }).eq('id', form.dataset.id);
