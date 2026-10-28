@@ -164,11 +164,13 @@ test.describe('Scenario C - Admin queue & cancellation', () => {
     await expect(page.getByText('Appointment cancelled.')).toBeVisible();
     await expect(dialog.getByRole('heading', { name: 'Cancel appointment' })).toHaveCount(0);
 
-    // Status badge flips to "Cancelled", reason is displayed, action buttons are gone
+    // Status badge flips to "Cancelled", reason is displayed, Cancel/Completed actions are gone
     const updated = rows.filter({ hasText: 'Seed: ear pain' });
     await expect(updated.locator('.badge')).toHaveText('Cancelled');
     await expect(updated).toContainText(reason);
-    await expect(updated.getByRole('button')).toHaveCount(0);
+    await expect(updated.getByRole('button', { name: 'Cancel', exact: true })).toHaveCount(0);
+    await expect(updated.getByRole('button', { name: 'Completed', exact: true })).toHaveCount(0);
+    await expect(updated.getByRole('button', { name: /Change status/ })).toBeVisible(); // admin can still correct the status
 
     const [patch] = fake.patchesTo('appointments');
     expect(patch.search).toContain('id=eq.a2');

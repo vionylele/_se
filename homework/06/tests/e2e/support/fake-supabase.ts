@@ -65,6 +65,11 @@ export class FakeSupabase {
     if (fs.existsSync(SUPABASE_UMD)) {
       await page.route('**/@supabase/supabase-js@*/**', (r) => r.fulfill({ path: SUPABASE_UMD, contentType: 'application/javascript' }));
     }
+    // Keep E2E independent of third-party CDNs/fonts (slow or blocked networks made page load hang).
+    // The tests check behaviour, not styling, so tiny stubs are enough.
+    await page.route(/cdn\.tailwindcss\.com/, (r) => r.fulfill({ contentType: 'application/javascript', body: 'window.tailwind = {};' }));
+    await page.route(/cdn\.jsdelivr\.net\/npm\/lucide/, (r) => r.fulfill({ contentType: 'application/javascript', body: 'window.lucide = { createIcons() {} };' }));
+    await page.route(/fonts\.(googleapis|gstatic)\.com/, (r) => r.abort());
     await page.route(SUPABASE_HOST, (route) => this.handle(route));
     // Realtime: accept the socket and stay silent (live-update toasts are out of scope for E2E).
     await page.routeWebSocket(/\/realtime\/v1\/websocket/, () => { /* no server connection */ });

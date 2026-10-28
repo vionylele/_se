@@ -35,7 +35,7 @@
 <header class="max-w-6xl mx-auto px-5 pt-8 pb-6">
   <a href="../../index.html" class="btn btn-main"><i data-lucide="arrow-left" class="w-4 h-4"></i>&larr; Back to Coursework Portal</a>
   <h1 class="mt-6 text-3xl sm:text-4xl font-bold tracking-tight text-white">Homework 06: Automated Testing Suite &amp; QA Dashboard</h1>
-  <p class="muted mt-2 max-w-3xl">Validation Suite for Lele Clinic System (<code class="text-sky-300">homework/03/Clinic_System/</code>)</p>
+  <p class="muted mt-2 max-w-3xl">Validation Suite for Formosa Care Clinic System (<code class="text-sky-300">homework/03/Clinic_System/</code>)</p>
   <p class="muted mt-1 text-xs">Testing suite architected and developed with assistance from Claude (Anthropic) for Homework 06.</p>
 </header>
 
@@ -149,7 +149,7 @@
       ['E6','B - 1-hour rule','Tomorrow is fully bookable',['All 21 slots enabled at 19:45 today']],
       ['E7','B - 1-hour rule','Tampering with the DOM is rejected',['Re-enabled 11:00 button -> "at least 1 hour" error','No POST sent; form stays open']],
       ['E8','C - Admin audit','Master schedule sorted newest first',['5 rows, dates descending','First row +5 days, last row -3 days; Admin badge shown']],
-      ['E9','C - Admin audit','Cancellation requires a reason',['Empty reason blocked (:invalid), no PATCH','With reason: "Appointment cancelled." toast','Badge becomes Cancelled; reason shown; actions removed','PATCH has status, cancellation_reason, cancelled_by = admin']],
+      ['E9','C - Admin audit','Cancellation requires a reason',['Empty reason blocked (:invalid), no PATCH','With reason: "Appointment cancelled." toast','Badge becomes Cancelled; reason shown; Cancel/Completed removed, Change status kept','PATCH has status, cancellation_reason, cancelled_by = admin']],
       ['E10','C - Admin audit','Status filter on the master schedule',['"Completed" leaves exactly one row']],
     ]},
   };

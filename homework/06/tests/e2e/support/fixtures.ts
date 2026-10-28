@@ -2,11 +2,13 @@ import { test as base, expect, type Page } from '@playwright/test';
 import { FakeSupabase } from './fake-supabase';
 
 export const test = base.extend<{ fake: FakeSupabase }>({
-  fake: async ({ page }, use) => {
+  // auto: true -> installed for EVERY test, even ones that never mention `fake`.
+  // Without it a test that only uses `page` would talk to the real Supabase and hang on "Loading...".
+  fake: [async ({ page }, use) => {
     const fake = new FakeSupabase();
     await fake.install(page);
     await use(fake);
-  },
+  }, { auto: true }],
 });
 export { expect };
 

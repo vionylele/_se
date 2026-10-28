@@ -33,7 +33,7 @@ lives in `homework/06/`.
 |---|---|---|---|---|
 | **Unit** | Vitest + fake timers | ~1 s | none | Business rules are correct in isolation, including time-zone and boundary behaviour |
 | **System (API)** | Vitest + Node `fetch` | seconds | live Supabase | The backend enforces security (API key, RLS) and data rules (DB triggers/constraints) independently of the UI |
-| **E2E** | Playwright (Chromium + Firefox, headless) | tens of seconds | CDN assets only | The user journeys work through the real UI |
+| **E2E** | Playwright (Chromium + Firefox, headless) | tens of seconds | none (CDNs stubbed) | The user journeys work through the real UI |
 
 Design decisions worth knowing:
 
@@ -80,7 +80,7 @@ homework/06/
 ## 4. Prerequisites & Installation
 
 * Node.js 18+ (developed against 22) and npm
-* Internet access (System tests call Supabase; the app page loads Tailwind/Lucide from CDNs)
+* Internet access for the System tests (they call Supabase). The E2E tests need no internet: Tailwind, Lucide, fonts and supabase-js are stubbed or served locally
 
 ```bash
 cd homework/06
@@ -181,7 +181,7 @@ the schema has no DELETE policy), add a patient account's `TEST_PATIENT_EMAIL` /
 | | Clock 10:30 | 11:00 disabled, 11:30 enabled (exact 60 min) |
 | | Tomorrow at 19:45 | All 21 slots enabled |
 | | DOM tampering (re-enable button) | Error toast "at least 1 hour...", no POST sent |
-| **C** Admin queue | Master schedule + cancel | Admin badge/nav; 5 rows sorted newest first (first = +5 days, last = -3 days); empty reason blocked (`:invalid`, no PATCH); with reason -> "Appointment cancelled."; badge `Cancelled`; reason displayed; action buttons removed; PATCH has `status`, `cancellation_reason`, `cancelled_by: 'admin'` |
+| **C** Admin queue | Master schedule + cancel | Admin badge/nav; 5 rows sorted newest first (first = +5 days, last = -3 days); empty reason blocked (`:invalid`, no PATCH); with reason -> "Appointment cancelled."; badge `Cancelled`; reason displayed; Cancel/Completed buttons removed (Change status stays); PATCH has `status`, `cancellation_reason`, `cancelled_by: 'admin'` |
 | | Status filter | `Completed` shows exactly one row |
 
 ## 7. Running Tests Without a Terminal
@@ -193,5 +193,5 @@ the schema has no DELETE policy), add a patient account's `TEST_PATIENT_EMAIL` /
 
 * E2E simulates the backend; the live backend is covered by the System tier. Pointing E2E at the real project would require dedicated test accounts and would write to production data.
 * The Playwright server uses `http-server` (a devDependency) so the ES module `app.js` loads over `http://`, not `file://`.
-* The page still loads Tailwind, Lucide and fonts from CDNs. `@supabase/supabase-js@2.45.4` (the version `index.html` loads) is served from `node_modules`, so it works even if that CDN is unreachable.
+* E2E does not depend on third-party CDNs: Tailwind/Lucide are replaced by tiny stubs, fonts are blocked, and `@supabase/supabase-js@2.45.4` (the version `index.html` loads) is served from `node_modules`. The tests therefore check behaviour, not styling. The backend fake is installed automatically for every test (`auto: true` fixture) so no test can reach the real Supabase.
 * Group 4 of the System tests and the production-only behaviours (e.g. realtime) are intentionally outside the default run.
