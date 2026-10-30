@@ -266,11 +266,11 @@ function scheduleTable(rows, compact = false) {
       const active = ['Scheduled', 'Rescheduled'].includes(a.status);
       return `<tr class="border-b last:border-0 align-top"><td class="py-2 pr-3 whitespace-nowrap">${a.appointment_date}<br><span class="text-slate-500">${a.appointment_time.slice(0, 5)}</span></td>
       <td class="pr-3">${esc(a.profiles?.full_name || '(no name)')}<br><span class="text-xs text-slate-500">${esc(a.profiles?.email)}</span></td>
-      <td class="pr-3">${esc(a.department)}</td><td class="pr-3 max-w-[14rem]">${esc(a.chief_complaint)}${a.cancellation_reason ? `<br><span class="text-xs text-red-700">Cancelled: ${esc(a.cancellation_reason)}</span>` : ''}</td>
+      <td class="pr-3">${esc(a.department)}</td><td class="pr-3 max-w-[12rem]">${esc(a.chief_complaint)}${a.cancellation_reason ? `<br><span class="text-xs text-red-700">Cancelled: ${esc(a.cancellation_reason)}</span>` : ''}</td>
       <td class="pr-3">${badge(a.status)}</td>
-      ${compact ? '' : `<td><div class="flex flex-wrap gap-1"><button class="btn btn-ghost !py-1 !px-2" data-action="edit-status" data-id="${a.id}">${icon('pencil', 'w-3.5 h-3.5')} Change status</button>${active ? `<button class="btn btn-ghost !py-1 !px-2" data-action="set-status" data-id="${a.id}" data-status="Completed">Completed</button>
-        <button class="btn btn-ghost !py-1 !px-2" data-action="set-status" data-id="${a.id}" data-status="No-Show">No-Show</button>
-        <button class="btn btn-danger !py-1 !px-2" data-action="cancel" data-id="${a.id}">Cancel</button>` : ''}</div></td>`}</tr>`;
+      ${compact ? '' : `<td class="whitespace-nowrap"><div class="flex flex-nowrap items-center gap-1"><button class="btn btn-ghost !py-1 !px-2 !text-xs" data-action="edit-status" data-id="${a.id}">${icon('pencil', 'w-3.5 h-3.5')} Change status</button>${active ? `<button class="btn btn-ghost !py-1 !px-2 !text-xs" data-action="set-status" data-id="${a.id}" data-status="Completed">Completed</button>
+        <button class="btn btn-ghost !py-1 !px-2 !text-xs" data-action="set-status" data-id="${a.id}" data-status="No-Show">No-Show</button>
+        <button class="btn btn-danger !py-1 !px-2 !text-xs" data-action="cancel" data-id="${a.id}">Cancel</button>` : ''}</div></td>`}</tr>`;
     }).join('')}</tbody></table></div>`;
 }
 
