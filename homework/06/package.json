@@ -10,6 +10,7 @@
     "test:e2e": "playwright test",
     "test:all": "npm run test:unit && npm run test:system && npm run test:e2e",
     "test:e2e:headed": "playwright test --headed",
+    "test:report": "node scripts/run-and-report.mjs",
     "report": "playwright show-report"
   },
   "devDependencies": {
