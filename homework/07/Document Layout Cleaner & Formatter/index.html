@@ -1,0 +1,1131 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DocuTidy – Word &amp; PowerPoint Layout Cleaner</title>
+<meta name="description" content="DocuTidy repairs broken Word and PowerPoint layouts entirely in your browser. Nothing is uploaded.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  if (window.tailwind) tailwind.config = { theme: { extend: { fontFamily: {
+    display: ['Fraunces', 'serif'], sans: ['"Instrument Sans"', 'system-ui', 'sans-serif'] } } } };
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root, html[data-theme="dark"] {
+    --bg: #0b111c; --panel: #131d2e; --panel2: #18263a; --ink: #e6edf6; --muted: #8b9bb2;
+    --line: #1e2c40; --accent: #38bdf8; --accent-ink: #0b111c; --accent-soft: rgba(56,189,248,.14);
+    --ok: #34d399; --warn: #fbbf24; --bad: #f87171; --shadow: 0 10px 30px rgba(0,0,0,.35);
+  }
+  html[data-theme="light"] {
+    --bg: #f3f6fb; --panel: #ffffff; --panel2: #eef3f9; --ink: #0f1b2d; --muted: #566780;
+    --line: #d9e2ee; --accent: #0369a1; --accent-ink: #ffffff; --accent-soft: rgba(3,105,161,.1);
+    --ok: #047857; --warn: #b45309; --bad: #b91c1c; --shadow: 0 10px 30px rgba(15,27,45,.08);
+  }
+  html { color-scheme: dark; }
+  html[data-theme="light"] { color-scheme: light; }
+  body { background: var(--bg); color: var(--ink); font-family: "Instrument Sans", system-ui, sans-serif; margin: 0; min-height: 100vh; }
+  .display { font-family: Fraunces, serif; letter-spacing: -.01em; }
+  .muted { color: var(--muted); }
+  .ic { width: 1.1em; height: 1.1em; flex: none; display: inline-block; vertical-align: -.15em; }
+  .wrap { max-width: 60rem; margin: 0 auto; padding-left: 1.25rem; padding-right: 1.25rem; }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: .9rem; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; border: 1px solid var(--line);
+    padding: .5rem .9rem; border-radius: .55rem; font-weight: 500; font-size: .875rem; color: var(--ink);
+    background: transparent; cursor: pointer; transition: border-color .15s, color .15s, background .15s; text-decoration: none; }
+  .btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .btn-main { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+  .btn-main:hover { background: var(--accent); color: var(--accent-ink); filter: brightness(1.1); }
+  .btn[disabled] { opacity: .45; cursor: not-allowed; filter: none; }
+  .btn-lg { padding: .8rem 1.4rem; font-size: 1rem; border-radius: .7rem; }
+  a:focus-visible, button:focus-visible, input:focus-visible + .switch-ui, label:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .drop { border: 2px dashed var(--line); border-radius: 1rem; padding: 2.5rem 1.25rem; text-align: center; cursor: pointer;
+    background: var(--panel); transition: border-color .15s, background .15s; display: block; }
+  .drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); }
+  .drop .big { width: 3.25rem; height: 3.25rem; border-radius: 999px; display: grid; place-items: center; margin: 0 auto 1rem;
+    background: var(--accent-soft); color: var(--accent); }
+  .drop .big .ic { width: 1.6rem; height: 1.6rem; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+
+  .chip { display: inline-flex; align-items: center; gap: .35rem; font-size: .75rem; font-weight: 600; border-radius: 999px; padding: .2rem .65rem;
+    border: 1px solid var(--line); color: var(--muted); }
+  .chip-accent { color: var(--accent); background: var(--accent-soft); border-color: transparent; }
+  .chip-ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 35%, transparent); }
+  .chip-warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
+
+  .rule { padding: 1.1rem 1.25rem; transition: opacity .15s, border-color .15s; }
+  .rule.off { opacity: .55; }
+  .rule .iconbox { width: 2.25rem; height: 2.25rem; border-radius: .6rem; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); flex: none; }
+  .issue { display: flex; align-items: baseline; gap: .6rem; font-size: .875rem; padding: .28rem 0; }
+  .issue .n { min-width: 2rem; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .issue.zero { color: var(--muted); }
+  .issue.zero .n { color: var(--ok); }
+  .issue.sub { padding-left: 2.6rem; font-size: .8rem; color: var(--muted); }
+  .issue:not(.zero):not(.sub) .n { color: var(--warn); }
+
+  .switch { position: relative; display: inline-block; width: 2.6rem; height: 1.5rem; flex: none; }
+  .switch input { position: absolute; inset: 0; opacity: 0; cursor: pointer; margin: 0; z-index: 1; }
+  .switch-ui { position: absolute; inset: 0; border-radius: 999px; background: var(--panel2); border: 1px solid var(--line); transition: background .15s; }
+  .switch-ui::after { content: ""; position: absolute; top: 2px; left: 2px; width: 1.1rem; height: 1.1rem; border-radius: 50%; background: var(--muted); transition: transform .15s, background .15s; }
+  .switch input:checked + .switch-ui { background: var(--accent); border-color: var(--accent); }
+  .switch input:checked + .switch-ui::after { transform: translateX(1.1rem); background: var(--accent-ink); }
+  .switch input:focus-visible + .switch-ui { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: .5rem; overflow: hidden; font-size: .8rem; }
+  .seg label { padding: .3rem .7rem; cursor: pointer; color: var(--muted); }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg input:checked + span { color: var(--accent); }
+  .seg label:has(input:checked) { background: var(--accent-soft); color: var(--accent); }
+  .seg label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  .banner { border-radius: .75rem; padding: .9rem 1.1rem; font-size: .9rem; display: flex; gap: .7rem; align-items: flex-start; border: 1px solid; }
+  .banner.err { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 45%, transparent); background: color-mix(in srgb, var(--bad) 9%, transparent); }
+  .banner.ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); background: color-mix(in srgb, var(--ok) 9%, transparent); }
+  .step { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .spin { width: 1em; height: 1em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: sp .7s linear infinite; display: inline-block; }
+  @keyframes sp { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin { animation-duration: 2s; } * { transition: none !important; } }
+  .hidden { display: none !important; }
+  .fade-in { animation: fi .25s ease-out; }
+  @keyframes fi { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+</style>
+</head>
+<body class="font-sans antialiased">
+
+<header class="wrap pt-6 pb-2 flex items-center justify-between gap-3 flex-wrap">
+  <a class="btn" href="../../../" title="Back to the homework portfolio"><span data-icon="arrow-left"></span> All homework</a>
+  <div class="flex items-center gap-2">
+    <span class="chip chip-ok"><span data-icon="lock"></span> Nothing leaves your browser</span>
+    <button id="themeBtn" class="btn" type="button" aria-label="Toggle light / dark theme"><span id="themeIcon"></span></button>
+  </div>
+</header>
+
+<main class="wrap pb-16">
+  <section class="pt-8 pb-8">
+    <p class="step mb-3">Homework 07 · Document Layout Cleaner &amp; Formatter</p>
+    <h1 class="display text-4xl sm:text-5xl leading-tight text-balance">Docu<span style="color:var(--accent)">Tidy</span></h1>
+    <p class="muted mt-4 max-w-2xl text-base leading-relaxed">
+      Drop a <strong style="color:var(--ink)">.docx</strong> or <strong style="color:var(--ink)">.pptx</strong> file. DocuTidy audits it for broken tables, out-of-order numbering,
+      stray blank lines and overflowing text boxes, then repairs it and hands back a <code>_tidy</code> copy.
+      Everything runs in this tab, so your document is never uploaded.
+    </p>
+  </section>
+
+  <!-- 1 · Drop -->
+  <section aria-labelledby="s1">
+    <h2 id="s1" class="step mb-2">1 · Choose a document</h2>
+    <label id="drop" class="drop" for="fileInput">
+      <div class="big"><span data-icon="upload"></span></div>
+      <p class="display text-xl">Drop a Word or PowerPoint file here</p>
+      <p class="muted text-sm mt-1">or click to browse · <code>.docx</code> and <code>.pptx</code> only</p>
+      <input id="fileInput" class="sr-only" type="file" accept=".docx,.pptx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation">
+    </label>
+    <div class="flex flex-wrap items-center gap-2 mt-3 text-sm">
+      <span class="muted">No file handy?</span>
+      <button class="btn" type="button" id="sampleDocx"><span data-icon="file"></span> Try a broken sample .docx</button>
+      <button class="btn" type="button" id="samplePptx"><span data-icon="slides"></span> Try a broken sample .pptx</button>
+    </div>
+    <div id="error" class="banner err mt-4 hidden" role="alert"></div>
+  </section>
+
+  <div id="work" class="hidden">
+    <!-- file bar -->
+    <section class="panel mt-6 p-4 flex items-center gap-4 flex-wrap fade-in" id="fileBar"></section>
+
+    <!-- 2 · Audit -->
+    <section class="mt-8 fade-in" aria-labelledby="s2">
+      <h2 id="s2" class="step mb-2">2 · Audit</h2>
+      <div id="summary" class="panel p-4 flex gap-3 items-start" aria-live="polite"></div>
+      <div id="rules" class="grid gap-4 mt-4"></div>
+    </section>
+
+    <!-- 3 · Repair -->
+    <section class="mt-8 fade-in" aria-labelledby="s3">
+      <h2 id="s3" class="step mb-2">3 · Repair</h2>
+      <div class="panel p-5 flex items-center justify-between gap-4 flex-wrap">
+        <p class="muted text-sm max-w-md" id="runHint">Switch rules on or off above, then run the repair.</p>
+        <button id="runBtn" class="btn btn-main btn-lg" type="button"><span data-icon="sparkles"></span> Run One-Click Tidy &amp; Repair</button>
+      </div>
+    </section>
+
+    <!-- 4 · Result -->
+    <section id="result" class="mt-8 hidden" aria-labelledby="s4" aria-live="polite"></section>
+  </div>
+</main>
+
+<footer class="wrap pb-10 muted text-sm" style="border-top:1px solid var(--line); padding-top:1.5rem">
+  DocuTidy · Designed and architected with assistance from Claude (Anthropic) · Built with plain HTML, Tailwind CSS and JSZip.
+</footer>
+
+<script>
+/* ==========================================================================
+   DocuTidy engine
+   Pure client-side: JSZip unpacks the OOXML package in memory, DOMParser reads
+   the XML parts, rule functions mutate the DOM and count what they changed,
+   XMLSerializer writes it back. The audit is simply a dry run of every rule on
+   a throw-away DOM, so the numbers in the audit always match what repair does.
+   ========================================================================== */
+const DocuTidyEngine = (() => {
+  'use strict';
+
+  const NS = {
+    w: 'http://schemas.openxmlformats.org/wordprocessingml/2006/main',
+    a: 'http://schemas.openxmlformats.org/drawingml/2006/main',
+    p: 'http://schemas.openxmlformats.org/presentationml/2006/main',
+  };
+  const W = NS.w, A = NS.a, P = NS.p;
+  const MIME = {
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  };
+
+  /* ---------- tiny DOM helpers ---------- */
+  function parseXml(str, label) {
+    const doc = new DOMParser().parseFromString(str, 'application/xml');
+    if (doc.getElementsByTagNameNS('*', 'parsererror').length) {
+      throw new Error('The XML part "' + label + '" could not be parsed. The file may be corrupted.');
+    }
+    return doc;
+  }
+  function serialize(doc) {
+    const s = new XMLSerializer().serializeToString(doc).replace(/^<\?xml[^>]*\?>\s*/, '');
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n' + s;
+  }
+  const elKids = (el) => Array.from(el.childNodes).filter((n) => n.nodeType === 1);
+  const kidsNS = (el, ns, name) => elKids(el).filter((n) => n.namespaceURI === ns && n.localName === name);
+  function kid(el, ns, name) {
+    if (!el) return null;
+    for (const n of el.childNodes) if (n.nodeType === 1 && n.namespaceURI === ns && n.localName === name) return n;
+    return null;
+  }
+  const desc = (el, ns, name) => Array.from(el.getElementsByTagNameNS(ns, name));
+  function hasAncestor(el, ns, name) {
+    for (let n = el.parentNode; n && n.nodeType === 1; n = n.parentNode) if (n.namespaceURI === ns && n.localName === name) return true;
+    return false;
+  }
+  function closest(el, ns, name) {
+    for (let n = el.parentNode; n && n.nodeType === 1; n = n.parentNode) if (n.namespaceURI === ns && n.localName === name) return n;
+    return null;
+  }
+  function mode(map) {
+    let best = null, bc = 0;
+    for (const [k, v] of map) if (v > bc) { best = k; bc = v; }
+    return best;
+  }
+  const bump = (map, k, n = 1) => map.set(k, (map.get(k) || 0) + n);
+  function insertOrdered(parent, child, order) {
+    const idx = order.indexOf(child.localName);
+    for (const n of elKids(parent)) {
+      const j = order.indexOf(n.localName);
+      if (j > idx) { parent.insertBefore(child, n); return child; }
+    }
+    parent.appendChild(child);
+    return child;
+  }
+
+  /* ======================================================================
+     WORD (.docx)  –  word/document.xml
+     ====================================================================== */
+  const gw = (el, n) => el.getAttributeNS(W, n);
+  const sw = (el, n, v) => el.setAttributeNS(W, 'w:' + n, String(v));
+  const mkw = (doc, n) => doc.createElementNS(W, 'w:' + n);
+  const isOff = (el) => ['0', 'false', 'off'].includes((gw(el, 'val') || '').toLowerCase());
+
+  const TBLPR_ORDER = ['tblStyle', 'tblpPr', 'tblOverlap', 'bidiVisual', 'tblStyleRowBandSize', 'tblStyleColBandSize', 'tblW', 'jc',
+    'tblCellSpacing', 'tblInd', 'tblBorders', 'shd', 'tblLayout', 'tblCellMar', 'tblLook', 'tblCaption', 'tblDescription', 'tblPrChange'];
+
+  function docxCounts() {
+    return { tablesOverflow: 0, cellsNoWrap: 0, rowsCantSplit: 0, rowsExactHeight: 0,
+      brokenSeq: 0, itemsRenumbered: 0,
+      emptyParas: 0, trailingWs: 0, extraSpaces: 0,
+      lineSpacing: 0, paraMargins: 0, fontRuns: 0 };
+  }
+
+  function pageTextWidth(root) {
+    let min = Infinity;
+    for (const s of desc(root, W, 'sectPr')) {
+      const sz = kid(s, W, 'pgSz'), mar = kid(s, W, 'pgMar');
+      if (!sz) continue;
+      const w = +gw(sz, 'w') || 0;
+      const l = mar ? +gw(mar, 'left') || 0 : 1440, r = mar ? +gw(mar, 'right') || 0 : 1440;
+      if (w - l - r > 0) min = Math.min(min, w - l - r);
+    }
+    return isFinite(min) ? min : 9360; // Letter, 1" margins
+  }
+
+  /* --- Rule: tables ---------------------------------------------------- */
+  function fixTables(root, doc, textW, c) {
+    for (const tbl of desc(root, W, 'tbl')) {
+      const nested = hasAncestor(tbl, W, 'tc');
+      let tblPr = kid(tbl, W, 'tblPr');
+      if (!tblPr) { tblPr = mkw(doc, 'tblPr'); tbl.insertBefore(tblPr, tbl.firstChild); }
+      const grid = kid(tbl, W, 'tblGrid');
+      const cols = grid ? kidsNS(grid, W, 'gridCol') : [];
+      const gridSum = cols.reduce((s, g) => s + (+gw(g, 'w') || 0), 0);
+
+      const tblW = kid(tblPr, W, 'tblW');
+      const type = tblW ? (gw(tblW, 'type') || 'dxa') : 'auto';
+      const raw = tblW ? gw(tblW, 'w') : null;
+      const widthDxa = type === 'dxa' ? (+raw || 0) : null;
+      const pct = type === 'pct' ? (String(raw || '').includes('%') ? parseFloat(raw) * 50 : (+raw || 0)) : null;
+      const ind = kid(tblPr, W, 'tblInd');
+      const indW = ind && (gw(ind, 'type') || 'dxa') === 'dxa' ? Math.max(+gw(ind, 'w') || 0, 0) : 0;
+      const tol = 30;
+
+      const overflow = (!nested && ((widthDxa !== null && widthDxa + indW > textW + tol) || gridSum + indW > textW + tol))
+        || (pct !== null && pct > 5000);
+
+      if (overflow) {
+        c.tablesOverflow++;
+        const t = tblW || insertOrdered(tblPr, mkw(doc, 'tblW'), TBLPR_ORDER);
+        sw(t, 'type', 'pct'); sw(t, 'w', 5000);
+        if (ind && indW > 0) { sw(ind, 'w', 0); sw(ind, 'type', 'dxa'); }
+        const lay = kid(tblPr, W, 'tblLayout');
+        if (lay && gw(lay, 'type') === 'fixed') sw(lay, 'type', 'autofit');
+        if (!nested && gridSum > textW) {
+          const f = textW / gridSum;
+          cols.forEach((g) => sw(g, 'w', Math.round((+gw(g, 'w') || 0) * f)));
+          for (const tr of kidsNS(tbl, W, 'tr')) for (const tc of kidsNS(tr, W, 'tc')) {
+            const w = kid(kid(tc, W, 'tcPr'), W, 'tcW');
+            if (w && (gw(w, 'type') || 'dxa') === 'dxa') sw(w, 'w', Math.round((+gw(w, 'w') || 0) * f));
+          }
+        }
+      }
+
+      for (const tr of kidsNS(tbl, W, 'tr')) {
+        // cells: allow wrapping
+        for (const tc of kidsNS(tr, W, 'tc')) {
+          const nw = kid(kid(tc, W, 'tcPr'), W, 'noWrap');
+          if (nw && !isOff(nw)) { nw.parentNode.removeChild(nw); c.cellsNoWrap++; }
+        }
+        // rows: don't split across pages, don't clip text
+        let trPr = kid(tr, W, 'trPr');
+        if (!trPr) {
+          trPr = mkw(doc, 'trPr');
+          const ex = kid(tr, W, 'tblPrEx');
+          tr.insertBefore(trPr, ex ? ex.nextSibling : tr.firstChild);
+        }
+        const cs = kid(trPr, W, 'cantSplit');
+        if (!cs) {
+          const el = mkw(doc, 'cantSplit');
+          const tail = elKids(trPr).find((n) => ['ins', 'del', 'trPrChange'].includes(n.localName));
+          trPr.insertBefore(el, tail || null);
+          c.rowsCantSplit++;
+        } else if (isOff(cs)) { cs.removeAttributeNS(W, 'val'); c.rowsCantSplit++; }
+        const h = kid(trPr, W, 'trHeight');
+        if (h && gw(h, 'hRule') === 'exact') { sw(h, 'hRule', 'atLeast'); c.rowsExactHeight++; }
+      }
+    }
+  }
+
+  /* --- Rule: lists ----------------------------------------------------- */
+  const NUM_RE = /^(\s*)(\d{1,3})([.)、．])(?!\d)\s*/;
+  function tNodes(p) { return desc(p, W, 't').filter((t) => closest(t, W, 'p') === p); }
+  const paraText = (p) => tNodes(p).map((t) => t.textContent).join('');
+
+  function setLeadingNumber(p, newStr) {
+    const ts = tNodes(p);
+    const full = ts.map((t) => t.textContent).join('');
+    const m = NUM_RE.exec(full);
+    if (!m) return;
+    const s = m[1].length, e = s + m[2].length;
+    let pos = 0, first = true;
+    for (const t of ts) {
+      const txt = t.textContent, a = pos, b = pos + txt.length;
+      pos = b;
+      const lo = Math.max(a, s), hi = Math.min(b, e);
+      if (lo >= hi) continue;
+      t.textContent = txt.slice(0, lo - a) + (first ? newStr : '') + txt.slice(hi - a);
+      first = false;
+    }
+  }
+
+  function resequenceLists(root, c) {
+    const parents = new Set(desc(root, W, 'p').map((p) => p.parentNode));
+    for (const parent of parents) {
+      let run = null, gap = 0;
+      const flush = () => {
+        if (run && run.length >= 2) {
+          const start = run[0].n;
+          let broken = false;
+          run.forEach((it, i) => {
+            const want = start + i;
+            if (it.n !== want) {
+              broken = true; c.itemsRenumbered++;
+              let s = String(want);
+              if (it.digits.length > 1 && it.digits[0] === '0') s = s.padStart(it.digits.length, '0');
+              setLeadingNumber(it.p, s);
+            }
+          });
+          if (broken) c.brokenSeq++;
+        }
+        run = null; gap = 0;
+      };
+      for (const node of elKids(parent)) {
+        if (node.namespaceURI === W && node.localName === 'p') {
+          const ppr = kid(node, W, 'pPr');
+          const m = ppr && kid(ppr, W, 'numPr') ? null : NUM_RE.exec(paraText(node));
+          if (m) {
+            const n = parseInt(m[2], 10);
+            if (run && (n === 1 || run.delim !== m[3])) flush();
+            if (!run) { run = []; run.delim = m[3]; }
+            run.push({ p: node, n, digits: m[2] });
+            gap = 0;
+          } else if (run && ++gap > 2) flush();
+        } else if (!['bookmarkStart', 'bookmarkEnd', 'proofErr'].includes(node.localName)) flush();
+      }
+      flush();
+    }
+  }
+
+  /* --- Rule: spacing (empty paragraphs, trailing / repeated spaces) ----- */
+  function runIsBlank(r) {
+    for (const n of elKids(r)) {
+      const ln = n.localName;
+      if (ln === 'rPr' || ln === 'tab' || ln === 'lastRenderedPageBreak') continue;
+      if (ln === 't') { if (/\S/.test(n.textContent)) return false; continue; }
+      if (ln === 'br') { const t = gw(n, 'type'); if (t === 'page' || t === 'column') return false; continue; }
+      return false;
+    }
+    return true;
+  }
+  function isBlankPara(p) {
+    const ppr = kid(p, W, 'pPr');
+    if (ppr && (kid(ppr, W, 'sectPr') || kid(ppr, W, 'numPr'))) return false;
+    for (const n of elKids(p)) {
+      if (n.namespaceURI === W && n.localName === 'pPr') continue;
+      if (n.namespaceURI === W && n.localName === 'r') { if (!runIsBlank(n)) return false; continue; }
+      return false; // hyperlinks, bookmarks, fields, revisions… are never "just blank"
+    }
+    return true;
+  }
+
+  function stripSpacing(root, c) {
+    const paras = desc(root, W, 'p');
+    // 1. collapse runs of blank paragraphs to a single one
+    for (const parent of new Set(paras.map((p) => p.parentNode))) {
+      let prevBlank = false;
+      for (const n of elKids(parent)) {
+        if (n.namespaceURI === W && n.localName === 'p' && isBlankPara(n)) {
+          if (prevBlank) { parent.removeChild(n); c.emptyParas++; } else prevBlank = true;
+        } else prevBlank = false;
+      }
+    }
+    // 2. trailing whitespace + repeated inner spaces
+    for (const p of desc(root, W, 'p')) {
+      const ts = tNodes(p);
+      for (const t of ts) {
+        const before = t.textContent;
+        const after = before.replace(/(\S) {2,}(?=\S)/g, '$1 ');
+        if (after !== before) { c.extraSpaces += (before.match(/(\S) {2,}(?=\S)/g) || []).length; t.textContent = after; }
+      }
+      let trimmed = false;
+      for (let i = ts.length - 1; i >= 0; i--) {
+        const txt = ts[i].textContent;
+        if (!txt) continue;
+        const nt = txt.replace(/[ \t　]+$/, '');
+        if (nt !== txt) { ts[i].textContent = nt; trimmed = true; }
+        if (nt) break;
+      }
+      if (trimmed) c.trailingWs++;
+    }
+  }
+
+  /* --- Rule: typography (line spacing, paragraph margins, font size) ---- */
+  const spacingOf = (p) => kid(kid(p, W, 'pPr'), W, 'spacing');
+  const runsOf = (p) => desc(p, W, 'r').filter((r) => closest(r, W, 'p') === p);
+  const runSz = (r) => { const s = kid(kid(r, W, 'rPr'), W, 'sz'); return s ? +gw(s, 'val') || 0 : 0; };
+  const isHeading = (p) => {
+    const ppr = kid(p, W, 'pPr'); if (!ppr) return false;
+    const st = kid(ppr, W, 'pStyle');
+    return !!kid(ppr, W, 'outlineLvl') || (st && /^(heading|title|subtitle|標題|标题)/i.test(gw(st, 'val') || ''));
+  };
+
+  function fixTypography(root, c) {
+    const paras = desc(root, W, 'p');
+    // dominant (auto) line spacing in the document
+    const lineCount = new Map();
+    for (const p of paras) {
+      const sp = spacingOf(p); if (!sp) continue;
+      const ln = +gw(sp, 'line');
+      if ((gw(sp, 'lineRule') || 'auto') === 'auto' && ln >= 200 && ln <= 480) bump(lineCount, ln);
+    }
+    const modeLine = mode(lineCount) || 276;
+
+    for (const p of paras) {
+      const sp = spacingOf(p); if (!sp) continue;
+      const lnStr = gw(sp, 'line');
+      if (lnStr !== null) {
+        const ln = +lnStr, rule = gw(sp, 'lineRule') || 'auto';
+        if (rule === 'auto') {
+          if (ln < 200 || ln > 480) { sw(sp, 'line', modeLine); c.lineSpacing++; }
+        } else if (rule === 'exact') {
+          const fs = Math.max(0, ...runsOf(p).map(runSz)) || 22; // half-points → 10 twips each
+          if (ln < fs * 10) { sw(sp, 'lineRule', 'atLeast'); c.lineSpacing++; } // exact line shorter than the font clips glyphs
+        }
+      }
+      let marginFixed = false;
+      for (const k of ['before', 'after']) {
+        const v = gw(sp, k);
+        if (v !== null && +v > 720) { sw(sp, k, 240); marginFixed = true; }
+      }
+      if (marginFixed) c.paraMargins++;
+    }
+
+    // snap near-miss font sizes (±1 pt) to the dominant body size
+    const sizeCount = new Map();
+    const body = paras.filter((p) => !isHeading(p));
+    for (const p of body) for (const r of runsOf(p)) {
+      const s = runSz(r); if (s) bump(sizeCount, s, r.textContent.length || 1);
+    }
+    const dom = mode(sizeCount);
+    if (dom) for (const p of body) for (const r of runsOf(p)) {
+      const rPr = kid(r, W, 'rPr'), s = runSz(r);
+      if (s && s !== dom && Math.abs(s - dom) <= 2) {
+        sw(kid(rPr, W, 'sz'), 'val', dom);
+        const cs = kid(rPr, W, 'szCs'); if (cs) sw(cs, 'val', dom);
+        c.fontRuns++;
+      }
+    }
+  }
+
+  async function runDocx(zip, rules) {
+    const path = 'word/document.xml';
+    const f = zip.file(path);
+    if (!f) throw new Error('This file has no word/document.xml, so it is not a valid .docx.');
+    const doc = parseXml(await f.async('string'), path);
+    const root = doc.documentElement;
+    const c = docxCounts();
+    const textW = pageTextWidth(root);
+    if (rules.tables) fixTables(root, doc, textW, c);
+    if (rules.lists) resequenceLists(root, c);
+    if (rules.spacing) stripSpacing(root, c);
+    if (rules.typography) fixTypography(root, c);
+    const stats = { tables: desc(root, W, 'tbl').length, paragraphs: desc(root, W, 'p').length };
+    return { counts: c, docs: { [path]: doc }, stats };
+  }
+
+  /* ======================================================================
+     POWERPOINT (.pptx)  –  ppt/slides/slide*.xml
+     ====================================================================== */
+  function pptxCounts() {
+    return { framesNoAutofit: 0, textOverflow: 0, dupBreaks: 0, emptyParas: 0, trailingWs: 0, titlesUncentered: 0, boxesMisaligned: 0 };
+  }
+  const FONT_STEPS = [92500, 85000, 77500, 70000, 62500, 55000, 47500, 40000, 32500, 25000];
+
+  function phKind(sp) {
+    const ph = kid(kid(kid(sp, P, 'nvSpPr'), P, 'nvPr'), P, 'ph');
+    if (!ph) return { ph: false, kind: 'free' };
+    const t = ph.getAttribute('type') || 'obj';
+    if (t === 'title' || t === 'ctrTitle') return { ph: true, kind: 'title' };
+    if (t === 'body' || t === 'obj') return { ph: true, kind: 'body' };
+    return { ph: true, kind: 'other' }; // subTitle, dt, ftr, sldNum, pic…
+  }
+  function xfrmOf(sp) {
+    const x = kid(kid(sp, P, 'spPr'), A, 'xfrm');
+    if (!x) return null;
+    const off = kid(x, A, 'off'), ext = kid(x, A, 'ext');
+    if (!off || !ext) return null;
+    return { off, ext, x: +off.getAttribute('x') || 0, y: +off.getAttribute('y') || 0, cx: +ext.getAttribute('cx') || 0, cy: +ext.getAttribute('cy') || 0 };
+  }
+  const isCjk = (ch) => ch.charCodeAt(0) >= 0x2e80;
+
+  function paraRuns(p) { return elKids(p).filter((n) => n.namespaceURI === A && (n.localName === 'r' || n.localName === 'fld')); }
+  function paraPlainText(p) {
+    return elKids(p).map((n) => {
+      if (n.namespaceURI !== A) return '';
+      if (n.localName === 'br') return '\n';
+      if (n.localName === 'r' || n.localName === 'fld') return Array.from(n.getElementsByTagNameNS(A, 't')).map((t) => t.textContent).join('');
+      return '';
+    }).join('');
+  }
+
+  /** Rough text-height estimate (EMU). Returns null when font sizes are unknown (inherited placeholders). */
+  function estimateText(sp, info) {
+    const tx = kid(sp, P, 'txBody'), xf = xfrmOf(sp);
+    if (!tx || !xf || !xf.cx || !xf.cy) return null;
+    const bp = kid(tx, A, 'bodyPr');
+    const ins = (n, d) => (bp && bp.getAttribute(n) !== null ? +bp.getAttribute(n) : d);
+    const availW = (xf.cx - ins('lIns', 91440) - ins('rIns', 91440)) / 12700; // pt
+    const boxH = xf.cy - ins('tIns', 45720) - ins('bIns', 45720);
+    const wrapNone = bp && bp.getAttribute('wrap') === 'none';
+    const na = kid(bp, A, 'normAutofit');
+    const scale = na && na.getAttribute('fontScale') ? (+na.getAttribute('fontScale') || 100000) / 100000 : 1;
+    const lnCut = na && na.getAttribute('lnSpcReduction') ? (+na.getAttribute('lnSpcReduction') || 0) / 100000 : 0;
+    const defSz = kid(kid(kid(tx, A, 'lstStyle'), A, 'lvl1pPr'), A, 'defRPr');
+    let hPt = 0, maxLinePt = 0;
+    for (const p of kidsNS(tx, A, 'p')) {
+      const runs = paraRuns(p);
+      const sizes = runs.map((r) => +(kid(r, A, 'rPr') || { getAttribute: () => 0 }).getAttribute('sz') || 0).filter(Boolean);
+      const end = kid(p, A, 'endParaRPr');
+      let sz = sizes.length ? Math.max(...sizes) : (end && +end.getAttribute('sz')) || (defSz && +defSz.getAttribute('sz')) || 0;
+      if (!sz) { if (info.ph) return null; sz = 1800; }
+      const pt = (sz / 100) * scale;
+      const pPr = kid(p, A, 'pPr');
+      const marL = pPr && pPr.getAttribute('marL') ? +pPr.getAttribute('marL') / 12700 : 0;
+      let ls = 1.2 * (1 - lnCut);
+      const lnPct = kid(kid(pPr, A, 'lnSpc'), A, 'spcPct');
+      if (lnPct) ls *= (+lnPct.getAttribute('val') || 100000) / 100000;
+      const pts = (n) => { const v = kid(kid(pPr, A, n), A, 'spcPts'); return v ? (+v.getAttribute('val') || 0) / 100 : 0; };
+      let lines = 0;
+      for (const seg of paraPlainText(p).split('\n')) {
+        let wPt = 0;
+        for (const ch of seg) wPt += isCjk(ch) ? pt : pt * 0.52;
+        maxLinePt = Math.max(maxLinePt, wPt + marL);
+        lines += wrapNone ? 1 : Math.max(1, Math.ceil(wPt / Math.max(availW - marL, pt)));
+      }
+      hPt += lines * pt * ls + pts('spcBef') + pts('spcAft');
+    }
+    return { h: hPt * 12700, boxH, availW, maxLinePt, wrapNone, xf };
+  }
+
+  function cleanParagraphs(root, c) {
+    const bodies = desc(root, P, 'txBody').concat(desc(root, A, 'txBody'));
+    for (const tb of bodies) {
+      const paras = kidsNS(tb, A, 'p');
+      for (const p of paras) {
+        // duplicate / trailing <a:br/>
+        for (const br of kidsNS(p, A, 'br')) {
+          let prev = br.previousElementSibling;
+          while (prev && prev.namespaceURI === A && prev.localName === 'r' && !prev.textContent.trim()) prev = prev.previousElementSibling; // empty runs are invisible
+          if (prev && prev.namespaceURI === A && prev.localName === 'br') { p.removeChild(br); c.dupBreaks++; }
+        }
+        for (;;) {
+          const content = elKids(p).filter((n) => !(n.namespaceURI === A && (n.localName === 'pPr' || n.localName === 'endParaRPr'))
+            && !(n.namespaceURI === A && n.localName === 'r' && !n.textContent.trim()));
+          const last = content[content.length - 1];
+          if (last && last.namespaceURI === A && last.localName === 'br') { p.removeChild(last); c.dupBreaks++; } else break;
+        }
+        // trailing whitespace
+        const ts = desc(p, A, 't');
+        let trimmed = false;
+        for (let i = ts.length - 1; i >= 0; i--) {
+          const txt = ts[i].textContent; if (!txt) continue;
+          const nt = txt.replace(/[ \t　]+$/, '');
+          if (nt !== txt) { ts[i].textContent = nt; trimmed = true; }
+          if (nt) break;
+        }
+        if (trimmed) c.trailingWs++;
+      }
+      // empty paragraphs: collapse runs, drop trailing ones (keep ≥ 1 paragraph)
+      const isEmpty = (p) => !paraPlainText(p).trim() && !elKids(p).some((n) => n.namespaceURI === A && n.localName === 'fld');
+      let list = kidsNS(tb, A, 'p'), prevEmpty = false;
+      for (const p of list) {
+        if (isEmpty(p)) { if (prevEmpty) { tb.removeChild(p); c.emptyParas++; } else prevEmpty = true; } else prevEmpty = false;
+      }
+      list = kidsNS(tb, A, 'p');
+      while (list.length > 1 && isEmpty(list[list.length - 1])) { tb.removeChild(list.pop()); c.emptyParas++; }
+    }
+  }
+
+  function applyAutofit(doc, sp, info, mode, slide, c) {
+    const tx = kid(sp, P, 'txBody');
+    if (!tx) return;
+    const hasText = desc(tx, A, 't').some((t) => t.textContent.trim());
+    if (!hasText) return;
+    const bp = kid(tx, A, 'bodyPr'); if (!bp) return;
+    const est = estimateText(sp, info);
+    const cur = elKids(bp).find((n) => n.namespaceURI === A && ['noAutofit', 'normAutofit', 'spAutoFit'].includes(n.localName));
+    const grows = !!cur && cur.localName === 'spAutoFit';
+    const overflow = !!est && !grows && (est.h > est.boxH * 1.02 || (est.wrapNone && est.maxLinePt > est.availW * 1.02));
+    const missing = !cur || cur.localName === 'noAutofit';
+    if (missing) c.framesNoAutofit++;
+    if (overflow) c.textOverflow++;
+    if (!missing && !overflow) return;
+
+    const warp = kid(bp, A, 'prstTxWarp');
+    const put = (name) => {
+      if (cur && cur.localName === name) return cur;
+      if (cur) bp.removeChild(cur);
+      const el = doc.createElementNS(A, 'a:' + name);
+      bp.insertBefore(el, warp ? warp.nextSibling : bp.firstChild);
+      return el;
+    };
+    if (est && est.wrapNone && est.maxLinePt > est.availW * 1.02) bp.setAttribute('wrap', 'square');
+
+    if (mode === 'shape') {
+      const el = put('spAutoFit');
+      if (overflow && est.xf) {
+        const ins = (n, d) => (bp.getAttribute(n) !== null ? +bp.getAttribute(n) : d);
+        const want = est.h + ins('tIns', 45720) + ins('bIns', 45720);
+        const maxH = Math.max(est.xf.cy, slide.cy - est.xf.y);
+        est.xf.ext.setAttribute('cy', String(Math.round(Math.min(want, maxH))));
+      }
+      return el;
+    }
+    const el = put('normAutofit');
+    if (overflow && !el.getAttribute('fontScale')) {
+      const s = Math.sqrt(est.boxH / est.h);
+      const fs = FONT_STEPS.find((v) => v <= s * 100000) || 25000;
+      el.setAttribute('fontScale', String(fs));
+      el.setAttribute('lnSpcReduction', fs <= 85000 ? '20000' : '10000');
+    }
+    return el;
+  }
+
+  function centerTitle(doc, sp, c) {
+    let changed = false;
+    const tx = kid(sp, P, 'txBody'); if (!tx) return;
+    for (const p of kidsNS(tx, A, 'p')) {
+      let pPr = kid(p, A, 'pPr');
+      if (!pPr) { pPr = doc.createElementNS(A, 'a:pPr'); p.insertBefore(pPr, p.firstChild); }
+      if (pPr.getAttribute('algn') !== 'ctr') { pPr.setAttribute('algn', 'ctr'); changed = true; }
+    }
+    if (changed) c.titlesUncentered++;
+  }
+
+  function alignBoxes(groups, slide, c) {
+    for (const kind of ['title', 'body']) {
+      const items = groups[kind].filter((i) => i.xf);
+      if (items.length < 3) continue;
+      const modes = {};
+      for (const k of ['x', 'y', 'cx']) {
+        const m = new Map(); items.forEach((i) => bump(m, i.xf[k]));
+        const best = mode(m);
+        modes[k] = m.get(best) >= 2 ? best : null;
+      }
+      const tolX = slide.cx * 0.04, tolY = slide.cy * 0.04;
+      for (const it of items) {
+        let changed = false;
+        const snap = (k, tol, apply) => {
+          const m = modes[k];
+          if (m === null) return;
+          const d = Math.abs(it.xf[k] - m);
+          if (d > 0 && d <= tol) { apply(m); changed = true; }
+        };
+        snap('x', tolX, (v) => it.xf.off.setAttribute('x', String(v)));
+        snap('y', tolY, (v) => it.xf.off.setAttribute('y', String(v)));
+        snap('cx', tolX, (v) => it.xf.ext.setAttribute('cx', String(v)));
+        if (changed) c.boxesMisaligned++;
+      }
+    }
+  }
+
+  async function runPptx(zip, rules, opts) {
+    const pres = zip.file('ppt/presentation.xml');
+    if (!pres) throw new Error('This file has no ppt/presentation.xml, so it is not a valid .pptx.');
+    const sz = kid(parseXml(await pres.async('string'), 'ppt/presentation.xml').documentElement, P, 'sldSz');
+    const slide = { cx: sz ? +sz.getAttribute('cx') || 9144000 : 9144000, cy: sz ? +sz.getAttribute('cy') || 6858000 : 6858000 };
+    const names = Object.keys(zip.files).filter((n) => /^ppt\/slides\/slide\d+\.xml$/.test(n))
+      .sort((a, b) => parseInt(a.match(/(\d+)\.xml$/)[1], 10) - parseInt(b.match(/(\d+)\.xml$/)[1], 10));
+    if (!names.length) throw new Error('No slides were found in this presentation.');
+
+    const c = pptxCounts(), docs = {}, groups = { title: [], body: [] };
+    let shapes = 0;
+    for (const n of names) {
+      const doc = parseXml(await zip.file(n).async('string'), n);
+      docs[n] = doc;
+      const root = doc.documentElement;
+      if (rules.cleanup) cleanParagraphs(root, c);
+      for (const sp of desc(root, P, 'sp')) {
+        const info = phKind(sp);
+        shapes++;
+        if (info.ph && info.kind === 'other') continue;
+        if (!kid(sp, P, 'txBody')) continue;
+        if (rules.autofit) applyAutofit(doc, sp, info, opts.fitMode || 'shrink', slide, c);
+        if (rules.align && info.kind === 'title') centerTitle(doc, sp, c);
+        if (info.kind === 'title' || info.kind === 'body') groups[info.kind].push({ sp, xf: xfrmOf(sp) });
+      }
+    }
+    if (rules.align) alignBoxes(groups, slide, c);
+    return { counts: c, docs, stats: { slides: names.length, shapes } };
+  }
+
+  /* ======================================================================
+     Public API
+     ====================================================================== */
+  const ALL_RULES = {
+    docx: { tables: true, lists: true, spacing: true, typography: true },
+    pptx: { autofit: true, cleanup: true, align: true },
+  };
+
+  async function open(buf) {
+    let zip;
+    try { zip = await JSZip.loadAsync(buf); }
+    catch (e) { throw new Error('This file is not a valid Office Open XML package. Old .doc/.ppt files and password-protected files are not supported.'); }
+    const kind = zip.file('word/document.xml') ? 'docx' : zip.file('ppt/presentation.xml') ? 'pptx' : null;
+    if (!kind) throw new Error('The ZIP archive does not look like a Word or PowerPoint document.');
+    return { zip, kind };
+  }
+  async function execute(buf, rules, opts = {}) {
+    const { zip, kind } = await open(buf);
+    const r = kind === 'docx' ? await runDocx(zip, rules) : await runPptx(zip, rules, opts);
+    return { zip, kind, ...r };
+  }
+  /** Dry-run every rule on a fresh DOM and report what would change. */
+  async function analyze(buf, opts = {}) {
+    const { zip } = await open(buf);
+    const kind = zip.file('word/document.xml') ? 'docx' : 'pptx';
+    const r = await execute(buf, ALL_RULES[kind], opts);
+    return { kind, counts: r.counts, stats: r.stats };
+  }
+  /** Apply the selected rules and return a Blob of the repaired file. */
+  async function repair(buf, rules, opts = {}) {
+    const r = await execute(buf, rules, opts);
+    for (const [path, doc] of Object.entries(r.docs)) r.zip.file(path, serialize(doc));
+    const blob = await r.zip.generateAsync({ type: 'blob', mimeType: MIME[r.kind], compression: 'DEFLATE', compressionOptions: { level: 6 } });
+    return { kind: r.kind, counts: r.counts, blob };
+  }
+
+  return { analyze, repair, ALL_RULES, MIME };
+})();
+window.DocuTidyEngine = DocuTidyEngine;
+</script>
+
+<script>
+/* ==========================================================================
+   Sample files (built in the browser so the demo works with no downloads)
+   ========================================================================== */
+const Samples = (() => {
+  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const decl = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
+
+  async function docx() {
+    const p = (t, o = {}) => `<w:p>${o.sp ? `<w:pPr><w:spacing ${o.sp}/></w:pPr>` : ''}<w:r><w:rPr>${o.b ? '<w:b/>' : ''}<w:sz w:val="${o.sz || 22}"/></w:rPr><w:t xml:space="preserve">${esc(t)}</w:t></w:r></w:p>`;
+    const blank = '<w:p/>';
+    const cell = (t, w, nowrap) => `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/>${nowrap ? '<w:noWrap/>' : ''}</w:tcPr>${p(t)}</w:tc>`;
+    const row = (cells, h) => `<w:tr>${h ? `<w:trPr><w:trHeight w:val="${h}" w:hRule="exact"/></w:trPr>` : ''}${cells}</w:tr>`;
+    const widths = [3000, 3000, 3500, 3500];
+    const table = `<w:tbl><w:tblPr><w:tblW w:w="13000" w:type="dxa"/><w:tblBorders>${['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map((s) => `<w:${s} w:val="single" w:sz="4" w:space="0" w:color="888888"/>`).join('')}</w:tblBorders><w:tblLayout w:type="fixed"/></w:tblPr>
+      <w:tblGrid>${widths.map((w) => `<w:gridCol w:w="${w}"/>`).join('')}</w:tblGrid>
+      ${row(['Region', 'Owner', 'Notes', 'Status'].map((t, i) => cell(t, widths[i], true)).join(''), 300)}
+      ${row(['North', 'A. Lin', 'Supplier contract renewal is pending legal review and budget sign-off from finance', 'On track'].map((t, i) => cell(t, widths[i], true)).join(''))}
+      ${row(['South', 'B. Chen', 'Warehouse migration finished ahead of schedule with no recorded incidents', 'Done'].map((t, i) => cell(t, widths[i], true)).join(''))}
+    </w:tbl>`;
+    const body = [
+      p('Quarterly Operations Report', { b: 1, sz: 36 }), blank, blank, blank,
+      p('This report summarises the work completed during the quarter and lists the steps for the next release.  '),
+      p('Spacing in this paragraph is inconsistent with the rest of the document and the font is a hair too big.', { sz: 23, sp: 'w:line="600" w:lineRule="auto" w:before="1200"' }),
+      p('Release checklist', { b: 1, sz: 26 }),
+      p('1. Collect the raw data'), p('2. Validate totals   '), p('4. Review with finance'), p('3. Publish the report'), p('5. Archive   the   files'),
+      blank, blank, blank,
+      p('Regional status', { b: 1, sz: 26 }), table, blank, blank,
+      p('Follow-ups', { b: 1, sz: 26 }),
+      p('1) Alpha review'), p('3) Beta rollout'), p('2) Gamma retrospective'),
+      '<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr>',
+    ].join('');
+    const z = new JSZip();
+    const put = (name, data) => z.file(name, data, { createFolders: false });
+    put('[Content_Types].xml', decl + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
+    put('_rels/.rels', decl + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
+    put('word/document.xml', decl + `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body}</w:body></w:document>`);
+    const blob = await z.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+    return new File([blob], 'docutidy-sample.docx', { type: DocuTidyEngine.MIME.docx });
+  }
+
+  async function pptx() {
+    const NSd = 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"';
+    const grp = '<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>';
+    const run = (t, sz) => `<a:r><a:rPr lang="en-US" sz="${sz}" dirty="0"/><a:t>${esc(t)}</a:t></a:r>`;
+    const title = (id, t, x, y, cx) => `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="Title ${id}"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr><p:ph type="title"/></p:nvPr></p:nvSpPr><p:spPr><a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${cx}" cy="900000"/></a:xfrm></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:pPr algn="l"/>${run(t, 3600)}</a:p></p:txBody></p:sp>`;
+    const body = (id, paras, x, y, cx, cy, sz) => `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="Content ${id}"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr><p:nvPr><p:ph idx="1"/></p:nvPr></p:nvSpPr><p:spPr><a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm></p:spPr><p:txBody><a:bodyPr><a:noAutofit/></a:bodyPr><a:lstStyle/>${paras.map((t) => (t === null ? '<a:p><a:endParaRPr lang="en-US" sz="' + sz + '"/></a:p>' : `<a:p>${t.split('|').map((seg, i, arr) => run(seg, sz) + (i < arr.length - 1 ? '<a:br><a:rPr lang="en-US" sz="' + sz + '"/></a:br>' : '')).join('')}</a:p>`)).join('')}</p:txBody></p:sp>`;
+    const box = (id, t, x, y, cx, cy, sz) => `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="TextBox ${id}"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:ln w="12700"><a:solidFill><a:srgbClr val="38BDF8"/></a:solidFill></a:ln></p:spPr><p:txBody><a:bodyPr wrap="square" rtlCol="0"><a:noAutofit/></a:bodyPr><a:lstStyle/><a:p>${run(t, sz)}</a:p></p:txBody></p:sp>`;
+    const slide = (shapes) => decl + `<p:sld ${NSd}><p:cSld><p:spTree>${grp}${shapes}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`;
+    const long = 'This quarter we shipped the new onboarding flow, retired the legacy importer, and cut average page load time by a third across every supported region and device class.';
+    const slides = [
+      slide(title(2, 'Quarterly Review', 609600, 365760, 10972800)
+        + body(3, ['Revenue is up 18% year over year', null, null, 'Churn fell to 2.1%|||(see appendix)  ', 'Hiring plan is on track', null], 609600, 1600200, 10972800, 1500000, 2400)
+        + box(4, long, 609600, 3900000, 5000000, 1100000, 2400)),
+      slide(title(2, 'Roadmap', 609600, 365760, 10972800) + body(3, ['Q1: Platform hardening', 'Q2: Self-serve billing', 'Q3: Partner API'], 609600, 1600200, 10972800, 3000000, 2400)),
+      slide(title(2, 'Risks & Mitigations', 777240, 457200, 10800000) + body(3, ['Vendor lock-in', 'Key-person dependency', 'Regulatory change'], 731520, 1700000, 10900000, 3000000, 2400)),
+    ];
+    const z = new JSZip();
+    const put = (name, data) => z.file(name, data, { createFolders: false });
+    const ct = '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>'
+      + '<Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>'
+      + '<Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>'
+      + '<Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>'
+      + '<Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>'
+      + slides.map((_, i) => `<Override PartName="/ppt/slides/slide${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`).join('') + '</Types>';
+    const rels = (arr) => decl + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' + arr.map(([id, type, t]) => `<Relationship Id="${id}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/${type}" Target="${t}"/>`).join('') + '</Relationships>';
+    put('[Content_Types].xml', decl + ct);
+    put('_rels/.rels', rels([['rId1', 'officeDocument', 'ppt/presentation.xml']]));
+    put('ppt/presentation.xml', decl + `<p:presentation ${NSd}><p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst><p:sldIdLst>${slides.map((_, i) => `<p:sldId id="${256 + i}" r:id="rId${i + 2}"/>`).join('')}</p:sldIdLst><p:sldSz cx="12192000" cy="6858000"/><p:notesSz cx="6858000" cy="9144000"/></p:presentation>`);
+    put('ppt/_rels/presentation.xml.rels', rels([['rId1', 'slideMaster', 'slideMasters/slideMaster1.xml'], ...slides.map((_, i) => [`rId${i + 2}`, 'slide', `slides/slide${i + 1}.xml`]), [`rId${slides.length + 2}`, 'theme', 'theme/theme1.xml']]));
+    put('ppt/slideMasters/slideMaster1.xml', decl + `<p:sldMaster ${NSd}><p:cSld><p:bg><p:bgRef idx="1001"><a:schemeClr val="bg1"/></p:bgRef></p:bg><p:spTree>${grp}</p:spTree></p:cSld><p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/><p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst><p:txStyles><p:titleStyle><a:lvl1pPr><a:defRPr sz="4400"/></a:lvl1pPr></p:titleStyle><p:bodyStyle><a:lvl1pPr><a:defRPr sz="2800"/></a:lvl1pPr></p:bodyStyle><p:otherStyle><a:lvl1pPr><a:defRPr sz="1800"/></a:lvl1pPr></p:otherStyle></p:txStyles></p:sldMaster>`);
+    put('ppt/slideMasters/_rels/slideMaster1.xml.rels', rels([['rId1', 'slideLayout', '../slideLayouts/slideLayout1.xml'], ['rId2', 'theme', '../theme/theme1.xml']]));
+    put('ppt/slideLayouts/slideLayout1.xml', decl + `<p:sldLayout ${NSd} type="blank" preserve="1"><p:cSld name="Blank"><p:spTree>${grp}</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sldLayout>`);
+    put('ppt/slideLayouts/_rels/slideLayout1.xml.rels', rels([['rId1', 'slideMaster', '../slideMasters/slideMaster1.xml']]));
+    slides.forEach((s, i) => {
+      put(`ppt/slides/slide${i + 1}.xml`, s);
+      put(`ppt/slides/_rels/slide${i + 1}.xml.rels`, rels([['rId1', 'slideLayout', '../slideLayouts/slideLayout1.xml']]));
+    });
+    const clr = (n, v) => `<a:${n}><a:srgbClr val="${v}"/></a:${n}>`;
+    const fill = '<a:solidFill><a:schemeClr val="phClr"/></a:solidFill>';
+    const ln = '<a:ln w="9525"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln>';
+    const font = '<a:latin typeface="Calibri"/><a:ea typeface=""/><a:cs typeface=""/>';
+    put('ppt/theme/theme1.xml', decl + `<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="DocuTidy"><a:themeElements><a:clrScheme name="DocuTidy"><a:dk1><a:srgbClr val="111827"/></a:dk1><a:lt1><a:srgbClr val="FFFFFF"/></a:lt1>${clr('dk2', '1F2937')}${clr('lt2', 'F3F4F6')}${['0EA5E9', '6366F1', '10B981', 'F59E0B', 'EF4444', '8B5CF6'].map((v, i) => clr('accent' + (i + 1), v)).join('')}${clr('hlink', '0369A1')}${clr('folHlink', '6D28D9')}</a:clrScheme><a:fontScheme name="DocuTidy"><a:majorFont>${font}</a:majorFont><a:minorFont>${font}</a:minorFont></a:fontScheme><a:fmtScheme name="DocuTidy"><a:fillStyleLst>${fill.repeat(3)}</a:fillStyleLst><a:lnStyleLst>${ln.repeat(3)}</a:lnStyleLst><a:effectStyleLst>${'<a:effectStyle><a:effectLst/></a:effectStyle>'.repeat(3)}</a:effectStyleLst><a:bgFillStyleLst>${fill.repeat(3)}</a:bgFillStyleLst></a:fmtScheme></a:themeElements></a:theme>`);
+    const blob = await z.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+    return new File([blob], 'docutidy-sample.pptx', { type: DocuTidyEngine.MIME.pptx });
+  }
+  return { docx, pptx };
+})();
+window.DocuTidySamples = Samples;
+</script>
+
+<script>
+/* ==========================================================================
+   UI
+   ========================================================================== */
+(() => {
+  'use strict';
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  /* Lucide-style inline icons (stroke, 24px grid) */
+  const ICONS = {
+    upload: '<path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/>',
+    file: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
+    slides: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
+    check: '<path d="M5 12.5l4.5 4.5L19 7"/>',
+    alert: '<path d="M12 3.5l10 17.5H2z"/><path d="M12 10v4.5M12 17.6v.01"/>',
+    download: '<path d="M12 4v12M7 11l5 5 5-5"/><path d="M4 20h16"/>',
+    lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/>',
+    sparkles: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16v4M17 18h4"/>',
+    table: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16"/>',
+    list: '<path d="M10 6h11M10 12h11M10 18h11M3 6h3M3 12h3M3 18h3"/>',
+    spacing: '<path d="M4 5h16M4 19h16M12 8.5v7M9.5 11l2.5-2.5 2.5 2.5M9.5 13l2.5 2.5 2.5-2.5"/>',
+    type: '<path d="M5 7V5h14v2M12 5v14M9 19h6"/>',
+    fit: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+    align: '<path d="M4 6h16M4 12h10M4 18h14"/>',
+    broom: '<path d="M4 7h16M4 12h16M4 17h10"/>',
+    arrow: '<path d="M19 12H5M11 6l-6 6 6 6"/>',
+    'arrow-left': '<path d="M19 12H5M11 6l-6 6 6 6"/>',
+    refresh: '<path d="M20 11a8 8 0 0 0-14.5-4M4 4v4h4M4 13a8 8 0 0 0 14.5 4M20 20v-4h-4"/>',
+  };
+  const icon = (n, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ''}</svg>`;
+  const hydrate = (root = document) => root.querySelectorAll('[data-icon]').forEach((el) => { el.innerHTML = icon(el.dataset.icon); el.style.display = 'inline-flex'; });
+
+  /* ---------- theme ---------- */
+  const themeBtn = $('#themeBtn');
+  function setTheme(t, persist) {
+    document.documentElement.dataset.theme = t;
+    $('#themeIcon').innerHTML = icon(t === 'dark' ? 'sun' : 'moon');
+    if (persist) { try { localStorage.setItem('docutidy-theme', t); } catch (e) { /* storage unavailable */ } }
+  }
+  let saved = null;
+  try { saved = localStorage.getItem('docutidy-theme'); } catch (e) { /* ignore */ }
+  setTheme(saved || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'), false);
+  themeBtn.addEventListener('click', () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark', true));
+  hydrate();
+
+  /* ---------- rule metadata ---------- */
+  const I = (k, one, many, sub) => ({ k, one, many, sub: !!sub });
+  const RULES = {
+    docx: [
+      { id: 'tables', title: 'Fix Tables', icon: 'table', desc: 'Fit tables to the page width, let long text wrap, and stop rows splitting across pages.',
+        issues: [I('tablesOverflow', 'overflowing table', 'overflowing tables'), I('cellsNoWrap', 'cell with wrapping disabled', 'cells with wrapping disabled'),
+          I('rowsCantSplit', 'row that can split across pages', 'rows that can split across pages'), I('rowsExactHeight', 'row with a fixed height that clips text', 'rows with a fixed height that clips text')] },
+      { id: 'lists', title: 'Re-sequence Lists', icon: 'list', desc: 'Renumber typed lists ("1.", "2.", "4.", "3.") into a clean ascending sequence.',
+        issues: [I('brokenSeq', 'broken numbering sequence', 'broken numbering sequences'), I('itemsRenumbered', 'item to renumber', 'items to renumber', true)] },
+      { id: 'spacing', title: 'Strip Empty Spacing', icon: 'spacing', desc: 'Collapse runs of blank paragraphs and remove trailing or repeated spaces.',
+        issues: [I('emptyParas', 'redundant empty paragraph', 'redundant empty paragraphs'), I('trailingWs', 'paragraph with trailing spaces', 'paragraphs with trailing spaces'),
+          I('extraSpaces', 'run of repeated spaces', 'runs of repeated spaces')] },
+      { id: 'typography', title: 'Normalize Typography', icon: 'type', desc: 'Pull outlier line spacing and paragraph margins back in line, and snap near-miss font sizes to the body size.',
+        issues: [I('lineSpacing', 'paragraph with irregular line spacing', 'paragraphs with irregular line spacing'), I('paraMargins', 'paragraph with oversized spacing', 'paragraphs with oversized spacing'),
+          I('fontRuns', 'text run with a jagged font size', 'text runs with a jagged font size')] },
+    ],
+    pptx: [
+      { id: 'autofit', title: 'Text Box Auto-fit', icon: 'fit', desc: 'Turn on auto-fit for text frames and pre-shrink text that is estimated to overflow its box.', fitMode: true,
+        issues: [I('framesNoAutofit', 'text box without auto-fit', 'text boxes without auto-fit'), I('textOverflow', 'text box likely overflowing', 'text boxes likely overflowing')] },
+      { id: 'cleanup', title: 'Clean Line Breaks', icon: 'broom', desc: 'Remove duplicate line breaks, stray empty paragraphs and trailing spaces inside text runs.',
+        issues: [I('dupBreaks', 'duplicate line break', 'duplicate line breaks'), I('emptyParas', 'stray empty paragraph', 'stray empty paragraphs'), I('trailingWs', 'paragraph with trailing spaces', 'paragraphs with trailing spaces')] },
+      { id: 'align', title: 'Center Titles & Align Boxes', icon: 'align', desc: 'Center slide titles and snap near-identical title/body boxes to the deck’s dominant position.',
+        issues: [I('titlesUncentered', 'title not centered', 'titles not centered'), I('boxesMisaligned', 'text box off the deck grid', 'text boxes off the deck grid')] },
+    ],
+  };
+  const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+
+  /* ---------- state ---------- */
+  const S = { file: null, buf: null, kind: null, audit: null, rules: {}, fitMode: 'shrink', busy: false };
+
+  /* ---------- helpers ---------- */
+  function showError(msg) { const e = $('#error'); e.innerHTML = `${icon('alert')}<div>${esc(msg)}</div>`; e.classList.remove('hidden'); }
+  const clearError = () => $('#error').classList.add('hidden');
+  const fmtSize = (b) => b < 1024 ? b + ' B' : b < 1048576 ? (b / 1024).toFixed(1) + ' KB' : (b / 1048576).toFixed(1) + ' MB';
+  const tick = () => new Promise((r) => setTimeout(r, 30));
+  const rulesFor = () => RULES[S.kind] || [];
+  const ruleTotal = (rule, counts) => rule.issues.filter((i) => !i.sub).reduce((s, i) => s + counts[i.k], 0);
+
+  /* ---------- load a file ---------- */
+  async function loadFile(file) {
+    clearError();
+    $('#result').classList.add('hidden');
+    if (!file) return;
+    if (!/\.(docx|pptx)$/i.test(file.name)) {
+      showError(/\.(doc|ppt)$/i.test(file.name)
+        ? 'Legacy .doc and .ppt files are not supported. Open the file in Word or PowerPoint and use Save As → .docx / .pptx first.'
+        : 'Only .docx and .pptx files are supported.');
+      return;
+    }
+    try {
+      const buf = await file.arrayBuffer();
+      const audit = await DocuTidyEngine.analyze(buf, { fitMode: S.fitMode });
+      S.file = file; S.buf = buf; S.kind = audit.kind; S.audit = audit;
+      S.rules = {};
+      rulesFor().forEach((r) => { S.rules[r.id] = ruleTotal(r, audit.counts) > 0; });
+      renderAll();
+      $('#work').classList.remove('hidden');
+      $('#fileBar').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } catch (err) {
+      console.error(err);
+      showError(err.message || 'Something went wrong while reading the file.');
+    }
+  }
+
+  /* ---------- render ---------- */
+  function renderAll() { renderFileBar(); renderSummary(); renderRules(); updateRunState(); }
+
+  function renderFileBar() {
+    const a = S.audit, isDoc = S.kind === 'docx';
+    const stat = isDoc ? `${plural(a.stats.paragraphs, 'paragraph', 'paragraphs')} · ${plural(a.stats.tables, 'table', 'tables')}`
+      : `${plural(a.stats.slides, 'slide', 'slides')} · ${plural(a.stats.shapes, 'shape', 'shapes')}`;
+    $('#fileBar').innerHTML = `
+      <div class="iconbox" style="width:2.75rem;height:2.75rem;border-radius:.7rem;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent)">${icon(isDoc ? 'file' : 'slides', 'text-xl')}</div>
+      <div class="min-w-0 flex-1">
+        <p class="font-semibold truncate">${esc(S.file.name)}</p>
+        <p class="muted text-sm">${isDoc ? 'Word document' : 'PowerPoint presentation'} · ${fmtSize(S.file.size)} · ${stat}</p>
+      </div>
+      <span class="chip chip-accent">${S.kind.toUpperCase()}</span>`;
+  }
+
+  function renderSummary() {
+    const c = S.audit.counts;
+    const parts = [];
+    for (const r of rulesFor()) for (const i of r.issues) if (!i.sub && c[i.k] > 0) parts.push(plural(c[i.k], i.one, i.many));
+    const el = $('#summary');
+    if (!parts.length) {
+      el.innerHTML = `<span style="color:var(--ok)">${icon('check', 'text-xl')}</span><div><p class="font-semibold">No layout issues detected</p><p class="muted text-sm">This file already looks tidy. You can still run the repair; nothing will change.</p></div>`;
+    } else {
+      el.innerHTML = `<span style="color:var(--warn)">${icon('alert', 'text-xl')}</span><div><p class="font-semibold">Found ${esc(parts.slice(0, 3).join(', '))}${parts.length > 3 ? ` and ${parts.length - 3} more kind${parts.length - 3 === 1 ? '' : 's'} of issue` : ''}</p><p class="muted text-sm">Review each rule below. Rules with nothing to fix start switched off.</p></div>`;
+    }
+  }
+
+  function renderRules() {
+    const c = S.audit.counts;
+    $('#rules').innerHTML = rulesFor().map((r) => {
+      const total = ruleTotal(r, c), on = !!S.rules[r.id];
+      return `<article class="panel rule ${on ? '' : 'off'}" data-rule="${r.id}">
+        <div class="flex items-start gap-3">
+          <div class="iconbox">${icon(r.icon)}</div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap"><h3 class="font-semibold">${esc(r.title)}</h3>
+              <span class="chip ${total ? 'chip-warn' : 'chip-ok'}">${total ? plural(total, 'issue', 'issues') : 'clean'}</span></div>
+            <p class="muted text-sm mt-0.5">${esc(r.desc)}</p>
+          </div>
+          <label class="switch" title="${on ? 'Rule enabled' : 'Rule disabled'}"><input type="checkbox" role="switch" data-toggle="${r.id}" ${on ? 'checked' : ''} aria-label="${esc(r.title)}"><span class="switch-ui"></span></label>
+        </div>
+        <div class="mt-3 pt-2" style="border-top:1px solid var(--line)">
+          ${r.issues.map((i) => `<div class="issue ${c[i.k] ? '' : 'zero'} ${i.sub ? 'sub' : ''}"><span class="n">${c[i.k] || 0}</span><span>${esc(c[i.k] === 1 ? i.one : i.many)}</span></div>`).join('')}
+        </div>
+        ${r.fitMode ? `<div class="mt-3 flex items-center gap-3 flex-wrap text-sm"><span class="muted">When text overflows:</span>
+          <div class="seg" role="radiogroup" aria-label="Auto-fit mode">
+            <label><input type="radio" name="fit" value="shrink" ${S.fitMode === 'shrink' ? 'checked' : ''}><span>Shrink text to fit</span></label>
+            <label><input type="radio" name="fit" value="shape" ${S.fitMode === 'shape' ? 'checked' : ''}><span>Grow the box to fit</span></label>
+          </div></div>` : ''}
+      </article>`;
+    }).join('');
+  }
+
+  function updateRunState() {
+    const any = Object.values(S.rules).some(Boolean);
+    $('#runBtn').disabled = !any || S.busy;
+    $('#runHint').textContent = any
+      ? 'Your original is never modified. A tidied copy is generated and downloaded.'
+      : 'Switch at least one rule on to run the repair.';
+  }
+
+  /* ---------- events ---------- */
+  $('#rules').addEventListener('change', async (e) => {
+    const t = e.target;
+    if (t.dataset.toggle) {
+      S.rules[t.dataset.toggle] = t.checked;
+      const card = t.closest('.rule'); card.classList.toggle('off', !t.checked);
+      t.closest('.switch').title = t.checked ? 'Rule enabled' : 'Rule disabled';
+      updateRunState();
+    } else if (t.name === 'fit') {
+      S.fitMode = t.value;
+    }
+  });
+
+  const drop = $('#drop'), input = $('#fileInput');
+  input.addEventListener('change', () => { loadFile(input.files[0]); input.value = ''; });
+  ['dragenter', 'dragover'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', (e) => {
+    const files = e.dataTransfer && e.dataTransfer.files;
+    if (files && files.length) loadFile(files[0]);
+  });
+  // stop the browser from opening a file dropped outside the dropzone
+  ['dragover', 'drop'].forEach((ev) => window.addEventListener(ev, (e) => e.preventDefault()));
+
+  $('#sampleDocx').addEventListener('click', async () => loadFile(await DocuTidySamples.docx()));
+  $('#samplePptx').addEventListener('click', async () => loadFile(await DocuTidySamples.pptx()));
+
+  function download(blob, name) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+  }
+  const tidyName = (n) => n.replace(/(\.[^.]+)$/, '_tidy$1');
+
+  $('#runBtn').addEventListener('click', async () => {
+    if (S.busy) return;
+    S.busy = true; clearError();
+    const btn = $('#runBtn'), label = btn.innerHTML;
+    btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Repairing…';
+    try {
+      await tick();
+      const opts = { fitMode: S.fitMode };
+      const out = await DocuTidyEngine.repair(S.buf, S.rules, opts);
+      const after = await DocuTidyEngine.analyze(await out.blob.arrayBuffer(), opts); // also proves the output re-opens
+      const name = tidyName(S.file.name);
+      renderResult(out, after, name);
+      download(out.blob, name);
+    } catch (err) {
+      console.error(err);
+      showError(err.message || 'The repair failed.');
+    } finally {
+      S.busy = false; btn.innerHTML = label; hydrate(btn); updateRunState();
+    }
+  });
+
+  function renderResult(out, after, name) {
+    const fixed = [];
+    let total = 0;
+    for (const r of rulesFor()) if (S.rules[r.id]) for (const i of r.issues) {
+      const n = out.counts[i.k];
+      if (n > 0 && !i.sub) { fixed.push(`<li>${icon('check')} <span>Fixed ${esc(plural(n, i.one, i.many))}</span></li>`); total += n; }
+    }
+    let left = 0;
+    for (const r of rulesFor()) left += ruleTotal(r, after.counts);
+    const el = $('#result');
+    el.innerHTML = `
+      <h2 id="s4" class="step mb-2">4 · Download</h2>
+      <div class="panel p-5 fade-in">
+        <div class="banner ok">${icon('check', 'text-xl')}<div><p class="font-semibold">${total ? `Repaired · ${plural(total, 'fix', 'fixes')} applied` : 'Nothing needed fixing'}</p>
+          <p class="text-sm" style="color:var(--muted)">${esc(name)} was generated in your browser and saved to your downloads.</p></div></div>
+        ${fixed.length ? `<ul class="mt-4 grid gap-1.5 text-sm" style="list-style:none;padding:0;margin-bottom:0">${fixed.map((f) => f.replace('<li>', '<li class="flex items-center gap-2" style="color:var(--ink)">')).join('')}</ul>` : ''}
+        <p class="muted text-sm mt-4">${left ? `Re-scan of the repaired file: ${plural(left, 'issue', 'issues')} remain (from rules you switched off).` : 'Re-scan of the repaired file: no remaining issues.'}</p>
+        <div class="flex flex-wrap gap-2 mt-5">
+          <button class="btn btn-main" id="dlAgain" type="button">${icon('download')} Download ${esc(name)}</button>
+          <button class="btn" id="another" type="button">${icon('refresh')} Tidy another file</button>
+        </div>
+      </div>`;
+    el.classList.remove('hidden');
+    $('#dlAgain').onclick = () => download(out.blob, name);
+    $('#another').onclick = () => { $('#work').classList.add('hidden'); el.classList.add('hidden'); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+})();
+</script>
+</body>
+</html>
