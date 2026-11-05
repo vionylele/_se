@@ -30,7 +30,11 @@ const walk = (s) => { for (const sp of s.specs ?? []) {
   } (s.suites ?? []).forEach(walk); };
 (read('e2e')?.suites ?? []).forEach(walk);
 
-const results = {};
+// Keep previous results for cases that did not run this time (e.g. opt-in S9-S13 on a machine
+// without TEST_PATIENT_* credentials, or on GitHub Actions) instead of wiping them.
+let previous = {};
+try { previous = JSON.parse(fs.readFileSync('results.json', 'utf8')).results ?? {}; } catch { /* first run */ }
+const results = { ...previous };
 for (const [k, ids] of Object.entries(MAP)) for (const [id, re] of Object.entries(ids)) {
   const hit = cases[k].filter((c) => re.test(c.name) && c.status !== 'skip');
   if (!hit.length) continue; // not run (e.g. opt-in tests) -> stays NOT RUN
