@@ -281,8 +281,14 @@ const DocuTidyEngine = (() => {
       const ind = kid(tblPr, W, 'tblInd');
       const indW = ind && (gw(ind, 'type') || 'dxa') === 'dxa' ? Math.max(+gw(ind, 'w') || 0, 0) : 0;
       const tol = 30;
+      // room available: the page text width, or (for a nested table) the width of the cell that holds it
+      let avail = textW;
+      if (nested) {
+        const pw = kid(kid(closest(tbl, W, 'tc'), W, 'tcPr'), W, 'tcW');
+        avail = pw && (gw(pw, 'type') || 'dxa') === 'dxa' && +gw(pw, 'w') > 400 ? +gw(pw, 'w') - 216 : null; // minus default cell margins
+      }
 
-      const overflow = (!nested && ((widthDxa !== null && widthDxa + indW > textW + tol) || gridSum + indW > textW + tol))
+      const overflow = (avail !== null && ((widthDxa !== null && widthDxa + indW > avail + tol) || gridSum + indW > avail + tol))
         || (pct !== null && pct > 5000);
 
       if (overflow) {
@@ -292,8 +298,8 @@ const DocuTidyEngine = (() => {
         if (ind && indW > 0) { sw(ind, 'w', 0); sw(ind, 'type', 'dxa'); }
         const lay = kid(tblPr, W, 'tblLayout');
         if (lay && gw(lay, 'type') === 'fixed') sw(lay, 'type', 'autofit');
-        if (!nested && gridSum > textW) {
-          const f = textW / gridSum;
+        if (avail !== null && gridSum > avail) {
+          const f = avail / gridSum;
           cols.forEach((g) => sw(g, 'w', Math.round((+gw(g, 'w') || 0) * f)));
           for (const tr of kidsNS(tbl, W, 'tr')) for (const tc of kidsNS(tr, W, 'tc')) {
             const w = kid(kid(tc, W, 'tcPr'), W, 'tcW');
@@ -374,14 +380,16 @@ const DocuTidyEngine = (() => {
       for (const node of elKids(parent)) {
         if (node.namespaceURI === W && node.localName === 'p') {
           const ppr = kid(node, W, 'pPr');
-          const m = ppr && kid(ppr, W, 'numPr') ? null : NUM_RE.exec(paraText(node));
+          // headings with typed numbers ("2. Results") are never list items; they end the current list
+          const m = (ppr && kid(ppr, W, 'numPr')) || isHeading(node) ? null : NUM_RE.exec(paraText(node));
           if (m) {
             const n = parseInt(m[2], 10);
             if (run && (n === 1 || run.delim !== m[3])) flush();
             if (!run) { run = []; run.delim = m[3]; }
             run.push({ p: node, n, digits: m[2] });
             gap = 0;
-          } else if (run && ++gap > 2) flush();
+          } else if (run && !isBlankPara(node) && ++gap > 2) flush(); // blank paragraphs don't count, so the result is stable after spacing cleanup
+          if (!m && run && isHeading(node)) flush();
         } else if (!['bookmarkStart', 'bookmarkEnd', 'proofErr'].includes(node.localName)) flush();
       }
       flush();
