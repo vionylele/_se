@@ -28,7 +28,7 @@ Use the *Try a broken sample* buttons if you have no file at hand.
 
 ## Use value
 
-- **Fast.** Drop a file, see an audit, press one button.
+- **Fast, one file or many.** Drop or multi-select any number of `.docx`/`.pptx` files, see one combined audit, press one button. A batch is repaired file by file and delivered as a single ZIP, with a per-file download as well.
 - **Private.** Contracts, student records and unreleased decks stay on the device. No upload, no account, no retention policy to read.
 - **Transparent.** The audit lists exactly what is wrong, and each rule can be switched off.
 - **Non-destructive.** The original is never touched; the output is a separate `name_tidy.docx/.pptx`.
@@ -80,6 +80,13 @@ No network request is made with document data. The only external requests are th
 | **Text Box Auto-fit** | Text frames with no auto-fit or `noAutofit`; text estimated to overflow its box (needs a known font size and box size) | Sets `normAutofit` and pre-computes `fontScale` / `lnSpcReduction` for overflowing text, or, in "grow the box" mode, `spAutoFit` and a taller shape (limited to the slide bottom). Fixes `wrap="none"` text wider than its box. |
 | **Clean Line Breaks** | Duplicate `<a:br/>` (even with empty runs between), trailing breaks, consecutive or trailing empty paragraphs, trailing spaces | Removes them, always keeping at least one paragraph |
 | **Center Titles & Align Boxes** | Title placeholders not centered; title/body boxes slightly off the position used by most slides | Sets `algn="ctr"` on titles; snaps `x`, `y`, `cx` to the deck's most common value when within 4% of the slide size |
+
+## Batch mode
+
+- Select several files in the file picker (or drop them together). *Add more files* appends to the list; duplicates are skipped and unsupported files are listed as skipped without blocking the rest.
+- Word and PowerPoint files can be mixed. The rule toggles apply to every file of the matching type, and the audit shows the combined totals.
+- One file → the `_tidy` file downloads directly. Two or more → `docutidy_tidy.zip` (with `_tidy` names, de-duplicated if two files share a name), plus a *Download* button per file. A file that fails does not stop the others.
+- Files are processed one after another in memory, so very large batches are limited by the browser's memory.
 
 ## Limitations
 
