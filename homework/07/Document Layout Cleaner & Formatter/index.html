@@ -685,7 +685,7 @@ const DocuTidyEngine = (() => {
   }
 
   function alignBoxes(groups, slide, c) {
-    for (const kind of ['title', 'body']) {
+    for (const kind of ['title', 'body', 'free']) {
       const items = groups[kind].filter((i) => i.xf);
       if (items.length < 3) continue;
       const modes = {};
@@ -711,6 +711,25 @@ const DocuTidyEngine = (() => {
     }
   }
 
+  const isTxBox = (sp) => { const c = kid(kid(sp, P, 'nvSpPr'), P, 'cNvSpPr'); return !!c && c.getAttribute('txBox') === '1'; };
+
+  /** Slides built from plain text boxes have no title placeholder: treat the big, short text near the top as the title. */
+  function findImplicitTitle(entries, slide) {
+    if (entries.some((e) => e.info.kind === 'title')) return null;
+    let best = null, bestSz = 0, bestY = 0;
+    for (const e of entries) {
+      if (e.info.ph) continue;
+      const xf = xfrmOf(e.sp), tx = kid(e.sp, P, 'txBody');
+      if (!xf || !tx || xf.y > slide.cy * 0.25 || kidsNS(tx, A, 'p').length > 2) continue;
+      const text = desc(tx, A, 't').map((t) => t.textContent).join('').trim();
+      if (!text || text.length > 120) continue;
+      const sz = Math.max(0, ...desc(tx, A, 'rPr').map((r) => +r.getAttribute('sz') || 0));
+      if (sz < 2800) continue;
+      if (sz > bestSz || (sz === bestSz && xf.y < bestY)) { best = e; bestSz = sz; bestY = xf.y; }
+    }
+    return best;
+  }
+
   async function runPptx(zip, rules, opts) {
     const pres = zip.file('ppt/presentation.xml');
     if (!pres) throw new Error('This file has no ppt/presentation.xml, so it is not a valid .pptx.');
@@ -720,21 +739,23 @@ const DocuTidyEngine = (() => {
       .sort((a, b) => parseInt(a.match(/(\d+)\.xml$/)[1], 10) - parseInt(b.match(/(\d+)\.xml$/)[1], 10));
     if (!names.length) throw new Error('No slides were found in this presentation.');
 
-    const c = pptxCounts(), docs = {}, groups = { title: [], body: [] };
+    const c = pptxCounts(), docs = {}, groups = { title: [], body: [], free: [] };
     let shapes = 0;
     for (const n of names) {
       const doc = parseXml(await zip.file(n).async('string'), n);
       docs[n] = doc;
       const root = doc.documentElement;
       if (rules.cleanup) cleanParagraphs(root, c);
-      for (const sp of desc(root, P, 'sp')) {
-        const info = phKind(sp);
+      const entries = desc(root, P, 'sp').map((sp) => ({ sp, info: phKind(sp) }));
+      const implicit = findImplicitTitle(entries, slide);
+      if (implicit) implicit.info = { ph: false, kind: 'title' };
+      for (const { sp, info } of entries) {
         shapes++;
         if (info.ph && info.kind === 'other') continue;
         if (!kid(sp, P, 'txBody')) continue;
         if (rules.autofit) applyAutofit(doc, sp, info, opts.fitMode || 'shrink', slide, c);
         if (rules.align && info.kind === 'title') centerTitle(doc, sp, c);
-        if (info.kind === 'title' || info.kind === 'body') groups[info.kind].push({ sp, xf: xfrmOf(sp) });
+        if (info.kind === 'title' || info.kind === 'body' || (info.kind === 'free' && isTxBox(sp))) groups[info.kind].push({ sp, xf: xfrmOf(sp) });
       }
     }
     if (rules.align) alignBoxes(groups, slide, c);
@@ -943,7 +964,7 @@ window.DocuTidySamples = Samples;
         issues: [I('framesNoAutofit', 'text box without auto-fit', 'text boxes without auto-fit'), I('textOverflow', 'text box likely overflowing', 'text boxes likely overflowing')] },
       { id: 'cleanup', title: 'Clean Line Breaks', icon: 'broom', desc: 'Remove duplicate line breaks, stray empty paragraphs and trailing spaces inside text runs.',
         issues: [I('dupBreaks', 'duplicate line break', 'duplicate line breaks'), I('emptyParas', 'stray empty paragraph', 'stray empty paragraphs'), I('trailingWs', 'paragraph with trailing spaces', 'paragraphs with trailing spaces')] },
-      { id: 'align', title: 'Center Titles & Align Boxes', icon: 'align', desc: 'Center slide titles and snap near-identical title/body boxes to the deck’s dominant position.',
+      { id: 'align', title: 'Center Titles & Align Boxes', icon: 'align', desc: 'Center slide titles (placeholders, or big text boxes at the top) and snap near-identical title, body and text boxes to the deck’s dominant position.',
         issues: [I('titlesUncentered', 'title not centered', 'titles not centered'), I('boxesMisaligned', 'text box off the deck grid', 'text boxes off the deck grid')] },
     ],
   };

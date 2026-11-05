@@ -79,7 +79,7 @@ No network request is made with document data. The only external requests are th
 |---|---|---|
 | **Text Box Auto-fit** | Text frames with no auto-fit or `noAutofit`; text estimated to overflow its box (needs a known font size and box size) | Sets `normAutofit` and pre-computes `fontScale` / `lnSpcReduction` for overflowing text, or, in "grow the box" mode, `spAutoFit` and a taller shape (limited to the slide bottom). Fixes `wrap="none"` text wider than its box. |
 | **Clean Line Breaks** | Duplicate `<a:br/>` (even with empty runs between), trailing breaks, consecutive or trailing empty paragraphs, trailing spaces | Removes them, always keeping at least one paragraph |
-| **Center Titles & Align Boxes** | Title placeholders not centered; title/body boxes slightly off the position used by most slides | Sets `algn="ctr"` on titles; snaps `x`, `y`, `cx` to the deck's most common value when within 4% of the slide size |
+| **Center Titles & Align Boxes** | Titles not centered (title placeholders, or on slides without one, the large short text box near the top); title, body and plain text boxes slightly off the position used by most slides | Sets `algn="ctr"` on titles; snaps `x`, `y`, `cx` to the deck's most common value when within 4% of the slide size, so left margins match across slides |
 
 ## Batch mode
 
