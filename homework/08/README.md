@@ -9,11 +9,11 @@
 | 2 | Campus administration system | ✅ Yes | | [02](https://github.com/vionylele/_se/tree/main/homework/02) |
 | 3 | Valuable project | ✅ Yes | | [03](https://github.com/vionylele/_se/tree/main/homework/03) |
 | 4 | Git flow |  ✅ Yes |  | [04](https://github.com/vionylele/_se/tree/main/homework/04) |
-| 5 | (Holiday) | ✅ Yes | | |
+| 5 | (Holiday) |  | | |
 | 6 | Docker | ✅ Yes | | [05](https://github.com/vionylele/_se/tree/main/homework/05) |
 | 7 | Website testing | ✅ Yes | | [06](https://github.com/vionylele/_se/tree/main/homework/06) |
 | 8 | Valuable project | ✅ Yes | | [07](https://github.com/vionylele/_se/tree/main/homework/07) |
-| 9 | Cloudflare website project | ✅ Yes | | [durable-chat-template](https://github.com/vionylele/durable-chat-template) |
+| 9 | Cloudflare website project | ✅ Yes | | [08](https://github.com/vionylele/durable-chat-template) |
 
 ---
 
