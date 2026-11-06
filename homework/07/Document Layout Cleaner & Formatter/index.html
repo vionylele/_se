@@ -251,6 +251,23 @@ const DocuTidyEngine = (() => {
       lineSpacing: 0, paraMargins: 0, fontRuns: 0 };
   }
 
+  function sectWidth(s) {
+    const sz = kid(s, W, 'pgSz'), mar = kid(s, W, 'pgMar');
+    if (!sz) return 0;
+    const l = mar ? +gw(mar, 'left') || 0 : 1440, r = mar ? +gw(mar, 'right') || 0 : 1440;
+    return (+gw(sz, 'w') || 0) - l - r;
+  }
+  /** Text width of the section a top-level table lives in (a section's sectPr comes at its END). */
+  function sectionTextWidth(tbl, fallback) {
+    let el = tbl;
+    while (el.parentNode && el.parentNode.localName !== 'body') el = el.parentNode;
+    for (let n = el; n; n = n.nextElementSibling) {
+      if (n.namespaceURI !== W) continue;
+      const s = n.localName === 'sectPr' ? n : n.localName === 'p' ? kid(kid(n, W, 'pPr'), W, 'sectPr') : null;
+      if (s) { const w = sectWidth(s); if (w > 0) return w; }
+    }
+    return fallback;
+  }
   function pageTextWidth(root) {
     let min = Infinity;
     for (const s of desc(root, W, 'sectPr')) {
@@ -264,6 +281,51 @@ const DocuTidyEngine = (() => {
   }
 
   /* --- Rule: tables ---------------------------------------------------- */
+  const dispLen = (str) => { let n = 0; for (const ch of str) n += ch.charCodeAt(0) >= 0x2e80 ? 2 : 1; return n; };
+  const sumOf = (a) => a.reduce((x, y) => x + y, 0);
+  const cellSpan = (tc) => { const gs = kid(kid(tc, W, 'tcPr'), W, 'gridSpan'); return gs ? Math.max(1, +gw(gs, 'val') || 1) : 1; };
+
+  /** Shrink a too-wide grid to `avail` twips: every column keeps room for its longest word, the rest goes to the columns with the most text. */
+  function distributeWidths(tbl, cols, avail) {
+    const n = cols.length;
+    if (!n) return;
+    const CH = 120, PAD = 216; // ≈ one 11 pt character, default cell margins
+    const minW = new Array(n).fill(0), want = new Array(n).fill(0);
+    for (const tr of kidsNS(tbl, W, 'tr')) {
+      let ci = 0;
+      for (const tc of kidsNS(tr, W, 'tc')) {
+        const span = cellSpan(tc);
+        if (span === 1 && ci < n) {
+          const text = desc(tc, W, 't').map((t) => t.textContent).join(' ').trim();
+          const longest = Math.max(0, ...text.split(/\s+/).filter(Boolean).map(dispLen));
+          minW[ci] = Math.max(minW[ci], longest * CH + PAD);
+          want[ci] = Math.max(want[ci], dispLen(text) * CH + PAD);
+        }
+        ci += span;
+      }
+    }
+    for (let i = 0; i < n; i++) { minW[i] = Math.max(minW[i], 600); want[i] = Math.max(want[i], minW[i]); }
+    const sumMin = sumOf(minW);
+    let w;
+    if (sumMin >= avail) w = minW.map((v) => (v * avail) / sumMin);
+    else {
+      const extra = avail - sumMin, need = want.map((v, i) => v - minW[i]), sumNeed = sumOf(need);
+      if (sumNeed >= extra) w = minW.map((v, i) => v + (sumNeed ? (need[i] * extra) / sumNeed : 0));
+      else { const left = extra - sumNeed, sw = sumOf(want); w = minW.map((v, i) => v + need[i] + (left * want[i]) / sw); }
+    }
+    w = w.map(Math.round);
+    w[n - 1] += Math.round(avail) - sumOf(w);
+    cols.forEach((g, i) => sw(g, 'w', w[i]));
+    for (const tr of kidsNS(tbl, W, 'tr')) {
+      let ci = 0;
+      for (const tc of kidsNS(tr, W, 'tc')) {
+        const span = cellSpan(tc), tw = kid(kid(tc, W, 'tcPr'), W, 'tcW');
+        if (tw && (gw(tw, 'type') || 'dxa') === 'dxa') sw(tw, 'w', sumOf(w.slice(ci, ci + span)));
+        ci += span;
+      }
+    }
+  }
+
   function fixTables(root, doc, textW, c) {
     for (const tbl of desc(root, W, 'tbl')) {
       const nested = hasAncestor(tbl, W, 'tc');
@@ -282,7 +344,7 @@ const DocuTidyEngine = (() => {
       const indW = ind && (gw(ind, 'type') || 'dxa') === 'dxa' ? Math.max(+gw(ind, 'w') || 0, 0) : 0;
       const tol = 30;
       // room available: the page text width, or (for a nested table) the width of the cell that holds it
-      let avail = textW;
+      let avail = nested ? null : sectionTextWidth(tbl, textW);
       if (nested) {
         const pw = kid(kid(closest(tbl, W, 'tc'), W, 'tcPr'), W, 'tcW');
         avail = pw && (gw(pw, 'type') || 'dxa') === 'dxa' && +gw(pw, 'w') > 400 ? +gw(pw, 'w') - 216 : null; // minus default cell margins
@@ -298,14 +360,7 @@ const DocuTidyEngine = (() => {
         if (ind && indW > 0) { sw(ind, 'w', 0); sw(ind, 'type', 'dxa'); }
         const lay = kid(tblPr, W, 'tblLayout');
         if (lay && gw(lay, 'type') === 'fixed') sw(lay, 'type', 'autofit');
-        if (avail !== null && gridSum > avail) {
-          const f = avail / gridSum;
-          cols.forEach((g) => sw(g, 'w', Math.round((+gw(g, 'w') || 0) * f)));
-          for (const tr of kidsNS(tbl, W, 'tr')) for (const tc of kidsNS(tr, W, 'tc')) {
-            const w = kid(kid(tc, W, 'tcPr'), W, 'tcW');
-            if (w && (gw(w, 'type') || 'dxa') === 'dxa') sw(w, 'w', Math.round((+gw(w, 'w') || 0) * f));
-          }
-        }
+        if (avail !== null && gridSum > avail) distributeWidths(tbl, cols, avail);
       }
 
       for (const tr of kidsNS(tbl, W, 'tr')) {
