@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Homework 01: PyCurl-Lite Web Demo</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<style>
+  :root{--bg:#0b111c;--ink:#e6edf6;--muted:#8b9bb2;--line:#1e2c40;--card:#131d2e;--accent:#38bdf8}
+  body{background:var(--bg);color:var(--ink);font-family:ui-sans-serif,system-ui,"Segoe UI",sans-serif}
+  .muted{color:var(--muted)} .card{background:var(--card);border:1px solid var(--line);border-radius:.75rem}
+  .btn{border:1px solid var(--line);padding:.4rem .8rem;border-radius:.5rem;font-size:.875rem;font-weight:500;background:rgba(255,255,255,.03);cursor:pointer}
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+  .btn-main{background:var(--accent);border-color:var(--accent);color:#06121f}
+  .btn-main:hover{color:#06121f;filter:brightness(1.1)}
+  textarea,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.85rem}
+  textarea{width:100%;background:#0a1220;border:1px solid var(--line);border-radius:.5rem;padding:.75rem;color:var(--ink)}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+</head>
+<body class="antialiased">
+<main class="max-w-4xl mx-auto px-5 py-10">
+  <a href="../../" class="text-sm" style="color:var(--accent)">&larr; Back to portfolio</a>
+  <h1 class="text-3xl font-semibold mt-3">PyCurl-Lite in the browser</h1>
+  <p class="muted mt-2">A web version of the Homework 01 command-line client. Type a curl-style command, using the same flags as <code>pycurl_lite.py</code>, and it runs through the browser's <code>fetch()</code>.</p>
+
+  <section class="card p-5 mt-6">
+    <label for="cmd" class="text-sm font-medium">Command</label>
+    <textarea id="cmd" rows="3" spellcheck="false"></textarea>
+    <div class="flex flex-wrap gap-2 mt-3 items-center">
+      <button id="run" class="btn btn-main" type="button">Send request</button>
+      <span class="muted text-xs ml-1">Presets:</span>
+      <button class="btn preset" type="button" data-c="curl -i https://httpbin.org/get">GET with headers</button>
+      <button class="btn preset" type="button" data-c="curl -X POST -H &quot;Content-Type: application/json&quot; -d '{&quot;name&quot;: &quot;claude&quot;}' https://httpbin.org/post">POST JSON</button>
+      <button class="btn preset" type="button" data-c="curl -I https://httpbin.org/get">HEAD (-I)</button>
+      <button class="btn preset" type="button" data-c="curl -v -u user:pass https://httpbin.org/basic-auth/user/pass">Basic auth (-v)</button>
+      <button class="btn preset" type="button" data-c="curl -L https://httpbin.org/redirect/2">Redirects (-L)</button>
+    </div>
+  </section>
+
+  <section class="card p-5 mt-5">
+    <div class="flex items-center justify-between gap-3 mb-3">
+      <h2 class="text-sm font-medium">Response</h2>
+      <span id="meta" class="text-xs muted"></span>
+    </div>
+    <pre id="out" class="overflow-auto whitespace-pre-wrap break-words max-h-[28rem] muted">Nothing sent yet.</pre>
+  </section>
+
+  <section class="card p-5 mt-5 text-sm muted leading-relaxed">
+    <h2 class="text-sm font-medium" style="color:var(--ink)">Supported flags and browser limits</h2>
+    <p class="mt-2"><b>Supported:</b> <code>-X</code> <code>-H</code> <code>-d</code> <code>-u</code> <code>-I</code> <code>-i</code> <code>-L</code> <code>-v</code> <code>-s</code> <code>--max-time</code>.</p>
+    <p class="mt-2"><b>Not possible here:</b> <code>-F</code> <code>-o</code> <code>-O</code> <code>-b</code> <code>-k</code> <code>-A</code>. Browsers block custom User-Agent and Cookie headers, file saving and certificate overrides.</p>
+    <p class="mt-2">The target server must allow cross-origin requests (CORS), as <code>httpbin.org</code> does. If it doesn't, the browser reports a network error. Use the Python CLI for those URLs, and see the <a class="underline" style="color:var(--accent)" href="https://github.com/vionylele/_se/blob/main/homework/01/pycurl_lite/README.md">README</a> for install steps.</p>
+  </section>
+</main>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const cmd = $('#cmd'), out = $('#out'), meta = $('#meta');
+cmd.value = 'curl -i https://httpbin.org/get';
+
+function tokenize(s) {
+  const t = []; let cur = '', q = null, has = false;
+  for (const c of s.replace(/\\\r?\n/g, ' ')) {
+    if (q) { if (c === q) q = null; else cur += c; }
+    else if (c === '"' || c === "'") { q = c; has = true; }
+    else if (/\s/.test(c)) { if (cur || has) { t.push(cur); cur = ''; has = false; } }
+    else cur += c;
+  }
+  if (cur || has) t.push(cur);
+  return t;
+}
+
+function parse(tokens) {
+  const o = { headers: {}, flags: new Set(), ignored: [] };
+  const withValue = new Set(['-X','-H','-d','-u','-A','-F','-o','-b','--max-time','--connect-timeout']);
+  const bool = new Set(['-I','-i','-L','-v','-s','-k','-O']);
+  let i = 0;
+  while (['curl', 'python', 'python3', 'pycurl_lite.py'].includes(tokens[i])) i++;
+  for (; i < tokens.length; i++) {
+    let a = tokens[i];
+    if (/^-[a-zA-Z]{2,}$/.test(a) && [...a.slice(1)].every((c) => bool.has('-' + c))) {
+      [...a.slice(1)].forEach((c) => o.flags.add('-' + c)); continue;
+    }
+    const long = { '--request':'-X','--header':'-H','--data':'-d','--user':'-u','--head':'-I','--include':'-i','--location':'-L','--verbose':'-v','--silent':'-s' };
+    a = long[a] || a;
+    if (withValue.has(a)) {
+      const v = tokens[++i];
+      if (a === '-X') o.method = v;
+      else if (a === '-H') { const k = v.indexOf(':'); if (k > 0) o.headers[v.slice(0, k).trim()] = v.slice(k + 1).trim(); }
+      else if (a === '-d') o.data = v;
+      else if (a === '-u') o.user = v;
+      else if (a === '--max-time') o.maxTime = parseFloat(v);
+      else o.ignored.push(a);
+    } else if (bool.has(a)) {
+      o.flags.add(a);
+      if (['-k', '-O'].includes(a)) o.ignored.push(a);
+    } else if (!a.startsWith('-')) o.url = a;
+    else o.ignored.push(a);
+  }
+  return o;
+}
+
+async function run() {
+  const o = parse(tokenize(cmd.value));
+  if (!o.url) { out.textContent = 'Error: no URL given.'; return; }
+  let url = o.url; if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  const head = o.flags.has('-I');
+  const method = (o.method || (head ? 'HEAD' : o.data != null ? 'POST' : 'GET')).toUpperCase();
+  const headers = { ...o.headers };
+  if (o.user) headers['Authorization'] = 'Basic ' + btoa(o.user);
+  if (o.data != null && !Object.keys(headers).some((k) => k.toLowerCase() === 'content-type'))
+    headers['Content-Type'] = 'application/x-www-form-urlencoded';
+
+  const ctl = new AbortController();
+  const timer = o.maxTime ? setTimeout(() => ctl.abort(), o.maxTime * 1000) : null;
+  out.className = out.className.replace('muted', '').trim();
+  out.textContent = 'Sending...'; meta.textContent = '';
+  const t0 = performance.now();
+  try {
+    const res = await fetch(url, {
+      method, headers, body: o.data, signal: ctl.signal,
+      redirect: o.flags.has('-L') ? 'follow' : 'manual',
+    });
+    const ms = Math.round(performance.now() - t0);
+    let text = '';
+    const showHeaders = o.flags.has('-i') || head || o.flags.has('-v');
+    const hdrs = [...res.headers].map(([k, v]) => `${k}: ${v}`).join('\n');
+    if (o.flags.has('-v')) {
+      const u = new URL(url);
+      text += `> ${method} ${u.pathname}${u.search} HTTP/1.1\n> Host: ${u.host}\n` +
+        Object.entries(headers).map(([k, v]) => `> ${k}: ${k === 'Authorization' ? 'Basic ***' : v}`).join('\n') + '\n>\n';
+    }
+    if (res.type === 'opaqueredirect') {
+      text += '< (redirect not followed: add -L to follow it)\n';
+    } else {
+      if (showHeaders) text += (o.flags.has('-v') ? '< ' : '') + `HTTP ${res.status} ${res.statusText}\n` + (o.flags.has('-v') ? hdrs.replace(/^/gm, '< ') : hdrs) + '\n\n';
+      if (!head) {
+        const body = await res.text();
+        text += body.length > 200000 ? body.slice(0, 200000) + '\n...[truncated]' : body;
+      }
+    }
+    if (o.ignored.length) text += `\n\n[ignored in browser: ${[...new Set(o.ignored)].join(' ')}]`;
+    out.textContent = text.trim() || '(empty response)';
+    meta.textContent = o.flags.has('-s') ? `${ms} ms` : `${res.status || 'redirect'} ${res.statusText} · ${ms} ms`;
+  } catch (e) {
+    out.textContent = (e.name === 'AbortError' ? 'Error: --max-time exceeded.' : 'Error: request failed. The server may block cross-origin requests (CORS), or the URL is unreachable.') + `\n(${e.message})`;
+  } finally { clearTimeout(timer); }
+}
+
+$('#run').addEventListener('click', run);
+cmd.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') run(); });
+document.querySelectorAll('.preset').forEach((b) => b.addEventListener('click', () => {
+  cmd.value = b.dataset.c; run();
+}));
+</script>
+</body>
+</html>

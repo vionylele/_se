@@ -109,14 +109,14 @@
   const ASSIGNMENTS = [
     { id: '01', title: 'PycURL Lite (CLI demo)', status: 'Completed',
       tags: ['Python', 'CLI', 'HTTP'],
-      desc: 'A lightweight command-line HTTP client in the spirit of curl, built on Python.',
+      desc: 'A lightweight command-line HTTP client in the spirit of curl, built on Python. The web demo runs the same curl-style flags in your browser.',
       demo: './homework/01/', source: REPO + '/tree/main/homework/01',
       docs: REPO + '/blob/main/homework/01/README.md' },
-    { id: '02', title: 'Homework 02', status: 'WIP',
-      tags: ['Web'],
-      desc: 'Description coming soon.',
-      demo: './homework/02/', source: REPO + '/tree/main/homework/02',
-      docs: REPO + '/blob/main/homework/02/README.md' },
+    { id: '02', title: 'NQU Academic Administration Portal', status: 'Completed',
+      tags: ['React', 'TypeScript', 'Vite', 'Supabase', 'Web'],
+      desc: 'Campus management portal inspired by National Quemoy University. Students pick courses on a timetable, track credits and grades, and print transcripts. Admins manage courses, announcements and the student directory, with live sync through Supabase.',
+      demo: './homework/02/', source: REPO + '/tree/main/homework/02/nqu-portal',
+      docs: REPO + '/blob/main/homework/02/nqu-portal/README.md' },
     { id: '03', title: 'Lele Clinic (Registration System)', status: 'Completed',
       tags: ['JavaScript', 'Tailwind', 'Supabase', 'Web'],
       desc: 'Clinic registration and outpatient web app. Patients book, reschedule and cancel visits; staff manage a live schedule. Enforces Taiwan clinic hours and break rules in the browser and the database.',
@@ -125,6 +125,10 @@
     { id: '04', title: 'Git Branching and Forking Exercise', status: 'Completed',
       tags: ['Git', 'GitHub', 'Version Control'],
       desc: 'Practice with branches, pull requests and forks across two repositories. The docs list the commit history for each branch. This one has no web demo.',
+      links: [
+        { label: 'Original repo', url: 'https://github.com/TestExamplevionylele/git_Example' },
+        { label: 'Forked repo', url: 'https://github.com/vionylele/git_Example' },
+      ],
       demo: null, source: REPO + '/tree/main/homework/04',
       docs: REPO + '/blob/main/homework/04/README.md' },
     { id: '05', title: 'IoT Sensor Monitoring Hub', status: 'Completed',
@@ -142,6 +146,13 @@
       desc: 'Browser-only tool that audits and repairs Word and PowerPoint layouts: overflowing tables, broken list numbering, stray blank lines and overflowing text boxes. Files never leave your device.',
       demo: './homework/07/Document%20Layout%20Cleaner%20%26%20Formatter/', source: REPO + '/tree/main/homework/07/Document%20Layout%20Cleaner%20%26%20Formatter',
       docs: REPO + '/blob/main/homework/07/Document%20Layout%20Cleaner%20%26%20Formatter/README.md' },
+    { id: '08', title: 'Durable Chat on Cloudflare', status: 'Completed',
+      tags: ['Cloudflare', 'Workers', 'Real-time', 'GitHub Pages'],
+      desc: 'Real-time chat app built from the Durable Chat template and deployed on Cloudflare Workers, with the code on GitHub and a copy published on GitHub Pages.',
+      links: [{ label: 'GitHub Pages version', url: 'https://vionylele.github.io/durable-chat-template/' }],
+      demo: 'https://durable-chat-template.templates.workers.dev/dNHZ9qjL9FaxG7alSp3L4',
+      source: 'https://github.com/vionylele/durable-chat-template',
+      docs: 'https://github.com/vionylele/durable-chat-template#readme' },
   ];
 
   const $ = (s) => document.querySelector(s);
@@ -177,6 +188,7 @@
             : `<span class="btn" aria-disabled="true" style="opacity:.5;cursor:not-allowed">No web demo</span>`}
           <a class="btn" href="${a.source}">View source code</a>
           <a class="btn" href="${a.docs}">Read the docs</a>
+          ${(a.links || []).map((l) => `<a class="btn" href="${l.url}" target="_blank" rel="noopener">${esc(l.label)}</a>`).join('')}
         </div>
       </article>`).join('');
   }
