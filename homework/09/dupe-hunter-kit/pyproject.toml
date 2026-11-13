@@ -1,0 +1,57 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dupe-hunter-kit"
+dynamic = ["version"]
+description = "Fast two-stage (file size + SHA-256) duplicate file finder and storage analyzer. Zero dependencies."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Your Name", email = "you@example.com" }]
+keywords = ["duplicate", "duplicates", "files", "sha256", "dedupe", "disk-space", "cli", "storage"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: System Administrators",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: System :: Filesystems",
+    "Topic :: Utilities",
+    "Typing :: Typed",
+]
+dependencies = []  # zero runtime dependencies: standard library only
+
+[project.optional-dependencies]
+dev = ["pytest>=7", "build", "twine"]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/dupe-hunter-kit"
+Issues = "https://github.com/yourusername/dupe-hunter-kit/issues"
+Source = "https://github.com/yourusername/dupe-hunter-kit"
+
+[project.scripts]
+dupe-hunter = "dupe_hunter.cli:main"
+
+[tool.hatch.version]
+path = "src/dupe_hunter/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dupe_hunter"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/dupe_hunter", "tests", "README.md", "LICENSE", "pyproject.toml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
